@@ -57,7 +57,9 @@ function CheckoutContent() {
             if (paymentMethod === "corporate") {
                 setCorporateBalance(prev => prev - total);
             }
-            setIsSuccess(true);
+            // Instead of inline success, redirect to the new Reveal page (Phase 17)
+            const mockBookingId = Math.floor(Math.random() * 100000);
+            window.location.href = `/booking/success/${mockBookingId}?gymName=${encodeURIComponent(gymName)}&membership=${encodeURIComponent(membershipDetails.type)}`;
         }, 2000);
     };
 
@@ -75,28 +77,7 @@ function CheckoutContent() {
     const taxes = +(subtotal * 0.18).toFixed(2);
     const total = subtotal + taxes;
 
-    if (isSuccess) {
-        return (
-            <main className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-                <div className="bg-white p-8 md:p-12 rounded-3xl shadow-xl max-w-lg w-full text-center animate-in zoom-in duration-500">
-                    <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <CheckCircle2 className="w-10 h-10 text-emerald-600" />
-                    </div>
-                    <h1 className="text-3xl font-black text-slate-900 mb-2">Payment Successful!</h1>
-                    <p className="text-slate-600 mb-8">
-                        Your {membershipDetails.type} for {gymName} is now active. You can find your pass in the dashboard.
-                    </p>
-                    <div className="bg-slate-50 p-4 rounded-xl mb-8 text-left border border-slate-100">
-                        <div className="text-sm text-slate-500 mb-1">Transaction ID</div>
-                        <div className="font-mono text-slate-800 font-semibold tracking-tight">pay_{Math.random().toString(36).substr(2, 9).toUpperCase()}</div>
-                    </div>
-                    <Button className="w-full text-lg h-14 bg-indigo-600 hover:bg-indigo-700 font-bold rounded-xl shadow-lg" asChild>
-                        <Link href="/dashboard">View My Pass <ArrowRight className="ml-2 w-5 h-5" /></Link>
-                    </Button>
-                </div>
-            </main>
-        );
-    }
+    // Removed inline isSuccess block in favor of dedicated redirect route
 
     return (
         <main className="min-h-screen bg-slate-50">
