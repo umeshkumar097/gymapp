@@ -44,10 +44,10 @@ export default async function Home({
           <Link href="/partner" className="text-[13px] font-bold text-slate-500 hover:text-indigo-600 transition-colors hidden sm:block uppercase tracking-wider">
             List your Gym
           </Link>
-          <Link href="/dashboard">
+          <Link href="/login">
             <Button variant="outline" size="sm" className="rounded-xl shadow-sm border-slate-200/60 hover:bg-slate-50 hover:border-slate-300 font-bold px-4">
               <User className="w-4 h-4 mr-2 text-indigo-500" />
-              Account
+              Log In / Register
             </Button>
           </Link>
         </div>
@@ -84,7 +84,7 @@ export default async function Home({
       </div>
 
       {/* Popular Locations Quick Links section */}
-      <div className="relative -mt-6 z-20 container mx-auto px-6 mb-12 flex justify-center">
+      <div className="relative -mt-6 z-20 container mx-auto px-6 mb-8 flex justify-center">
         <div className="bg-white px-8 py-4 rounded-2xl shadow-lg border border-slate-100 flex gap-6 items-center flex-wrap justify-center overflow-x-auto whitespace-nowrap">
           <span className="text-sm font-bold text-slate-500 tracking-wider uppercase">Popular:</span>
           {['Mumbai', 'Delhi NCR', 'Bangalore', 'Hyderabad', 'Pune'].map(city => (
@@ -92,6 +92,18 @@ export default async function Home({
               {city}
             </Link>
           ))}
+        </div>
+      </div>
+
+      {/* Trusted Partner Brands */}
+      <div className="container mx-auto px-6 pb-12 pt-4 max-w-5xl">
+        <p className="text-center text-xs font-bold text-slate-400 uppercase tracking-widest mb-8">Trusted by Premium Fitness Brands</p>
+        <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 opacity-60 grayscale hover:grayscale-0 transition-all duration-700">
+          <div className="text-xl md:text-2xl font-black font-sans tracking-tighter">CULT<span className="text-indigo-600">.FIT</span></div>
+          <div className="text-xl md:text-2xl font-black font-serif italic tracking-wide">Gold's Gym</div>
+          <div className="text-xl md:text-2xl font-extrabold uppercase tracking-widest text-slate-800">Anytime <span className="text-rose-500 -ml-1">.</span></div>
+          <div className="text-xl md:text-2xl font-black tracking-tighter flex items-center gap-1"><span className="text-indigo-600">FIT</span>PASS</div>
+          <div className="text-xl md:text-2xl font-bold tracking-tight text-slate-700 text-[1.3rem]">Talwalkars</div>
         </div>
       </div>
 
@@ -141,9 +153,9 @@ export default async function Home({
             <div>
               <h4 className="text-white font-bold mb-4 uppercase tracking-wider text-sm">Company</h4>
               <ul className="space-y-3">
-                <li><Link href="#" className="hover:text-white transition-colors">About Us</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors">Careers</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors">Contact Support</Link></li>
+                <li><Link href="/about" className="hover:text-white transition-colors">About Us</Link></li>
+                <li><Link href="/careers" className="hover:text-white transition-colors">Careers</Link></li>
+                <li><Link href="/contact" className="hover:text-white transition-colors">Contact Support</Link></li>
               </ul>
             </div>
 
@@ -162,9 +174,11 @@ export default async function Home({
 
           <div className="pt-8 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-slate-500">
             <div>© {new Date().getFullYear()} PassFit, Inc. All rights reserved. <span className="ml-2 text-slate-500">A product by <a href="https://www.aiclex.in" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 transition-colors">Aiclex Technologies</a></span></div>
-            <div className="flex gap-6">
-              <Link href="#" className="hover:text-white transition-colors">Privacy Policy</Link>
-              <Link href="#" className="hover:text-white transition-colors">Terms of Service</Link>
+            <div className="flex gap-4 md:gap-6 flex-wrap justify-center">
+              <Link href="/support" className="hover:text-white transition-colors">Help & Support</Link>
+              <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
+              <Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
+              <Link href="/disclaimer" className="hover:text-white transition-colors">Legal Disclaimer</Link>
             </div>
           </div>
         </div>

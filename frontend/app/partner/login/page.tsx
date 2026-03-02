@@ -11,6 +11,7 @@ export default function PartnerLogin() {
 
     // Using a mock single state for Login/Register to demonstrate flow
     const [isRegistering, setIsRegistering] = useState(true);
+    const [whatsappNumber, setWhatsappNumber] = useState("");
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -52,17 +53,35 @@ export default function PartnerLogin() {
                     <form className="space-y-6" onSubmit={handleSubmit}>
 
                         {isRegistering && (
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700">Gym Name</label>
-                                <div className="mt-2 relative rounded-xl shadow-sm">
-                                    <input
-                                        type="text"
-                                        required
-                                        placeholder="e.g. Iron Core Fitness"
-                                        className="block w-full rounded-xl border-slate-200 pl-4 py-3 text-slate-900 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm font-medium bg-slate-50"
-                                    />
+                            <>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700">Gym Name</label>
+                                    <div className="mt-2 relative rounded-xl shadow-sm">
+                                        <input
+                                            type="text"
+                                            required
+                                            placeholder="e.g. Iron Core Fitness"
+                                            className="block w-full rounded-xl border-slate-200 pl-4 py-3 text-slate-900 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm font-medium bg-slate-50"
+                                        />
+                                    </div>
                                 </div>
-                            </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700">WhatsApp Number</label>
+                                    <div className="mt-2 relative rounded-xl shadow-sm">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none border-r border-slate-200 pr-2">
+                                            <span className="text-slate-500 font-bold sm:text-sm">🇮🇳 +91</span>
+                                        </div>
+                                        <input
+                                            type="tel"
+                                            required
+                                            value={whatsappNumber}
+                                            onChange={(e) => setWhatsappNumber(e.target.value.replace(/[^0-9]/g, '').slice(0, 10))}
+                                            placeholder="98765 43210"
+                                            className="block w-full rounded-xl border-slate-200 pl-20 py-3 text-slate-900 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm font-medium bg-slate-50"
+                                        />
+                                    </div>
+                                </div>
+                            </>
                         )}
 
                         <div>
