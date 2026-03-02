@@ -55,7 +55,7 @@ export default function BookingSuccessReveal() {
         return (
             <main className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
                 <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
-                <h2 className="text-xl font-bold text-slate-800 animate-pulse">Confirming Payment...</h2>
+                <h2 className="text-xl font-bold text-slate-800 animate-pulse">Confirming Booking...</h2>
                 <p className="text-slate-500 text-sm mt-2">Generating your secure Entry PIN</p>
             </main>
         );
@@ -90,7 +90,7 @@ export default function BookingSuccessReveal() {
                         <CheckCircle2 className="w-10 h-10 text-white" />
                     </div>
                     <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-2">Booking Confirmed!</h1>
-                    <p className="text-indigo-100 font-medium">Your pass is ready. Show your PIN at the desk to enter.</p>
+                    <p className="text-indigo-100 font-medium">Your pass is ready. Show your PIN at the desk and <span className="text-amber-300 font-bold">pay cash</span> to enter.</p>
                 </div>
 
                 {/* The Pass Card */}
