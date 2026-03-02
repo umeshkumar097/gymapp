@@ -16,9 +16,17 @@ function CheckoutContent() {
 
     const [membershipDetails, setMembershipDetails] = useState<any>(null);
     const [isProcessing, setIsProcessing] = useState(false);
-    const [isSuccess, setIsSuccess] = useState(false);
+    const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-
+    // Auth and Hydration Check
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            window.location.href = "/login";
+        } else {
+            setIsCheckingAuth(false);
+        }
+    }, []);
 
     // Phase 13: Add-On Services State
     const [selectedAddons, setSelectedAddons] = useState<number[]>([]);
@@ -95,8 +103,13 @@ function CheckoutContent() {
         }
     };
 
-    if (!membershipDetails) {
-        return <div className="min-h-screen flex items-center justify-center bg-slate-50">Loading Cart...</div>
+    if (isCheckingAuth || !membershipDetails) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
+                <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+                <div className="text-slate-500 font-bold animate-pulse">Loading Checkout Details...</div>
+            </div>
+        );
     }
 
     const basePrice = membershipDetails.price;
