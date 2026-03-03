@@ -18,6 +18,11 @@ function CheckoutContent() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
+    // Phase 19: Promo Engine State
+    const [promoCode, setPromoCode] = useState("");
+    const [appliedPromo, setAppliedPromo] = useState<{ code: string, discount: number } | null>(null);
+    const [isVerifyingPromo, setIsVerifyingPromo] = useState(false);
+
     // Auth and Hydration Check
     useEffect(() => {
         const token = localStorage.getItem("token");
@@ -54,6 +59,29 @@ function CheckoutContent() {
         }
     }, [membershipId]);
 
+    const handleApplyPromo = async () => {
+        if (!promoCode) return;
+        setIsVerifyingPromo(true);
+        try {
+            const res = await fetch("https://passfit.in/api/v1/promos/verify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ code: promoCode })
+            });
+            const data = await res.json();
+            if (data.is_valid) {
+                setAppliedPromo({ code: promoCode.toUpperCase(), discount: data.discount_percentage });
+            } else {
+                setAppliedPromo(null);
+                alert(data.message);
+            }
+        } catch (e) {
+            alert("Error verifying promo code");
+        } finally {
+            setIsVerifyingPromo(false);
+        }
+    };
+
     const handleBooking = async () => {
         setIsProcessing(true);
 
@@ -84,7 +112,9 @@ function CheckoutContent() {
                     gym_id: parseInt(gymId || "0"),
                     membership_id: parseInt(membershipId || "0"),
                     start_date: startDate.toISOString(),
-                    end_date: endDate.toISOString()
+                    end_date: endDate.toISOString(),
+                    promo_code: appliedPromo ? appliedPromo.code : null,
+                    final_amount: parseFloat(total.toFixed(2))
                 })
             });
 
@@ -119,8 +149,12 @@ function CheckoutContent() {
     }, 0);
 
     const subtotal = basePrice + addonsTotal;
-    const taxes = +(subtotal * 0.18).toFixed(2);
-    const total = subtotal + taxes;
+    const discountAmount = appliedPromo ? (subtotal * (appliedPromo.discount / 100)) : 0;
+    const postDiscountSubtotal = subtotal - discountAmount;
+
+    // Tax is applied ON the post-discount amount
+    const taxes = +(postDiscountSubtotal * 0.18).toFixed(2);
+    const total = postDiscountSubtotal + taxes;
 
     // Removed inline isSuccess block in favor of dedicated redirect route
 
@@ -207,6 +241,38 @@ function CheckoutContent() {
 
                     {/* Payment Summary */}
                     <div>
+                        {/* Phase 19: Promo Engine */}
+                        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-6">
+                            <h2 className="text-lg font-bold text-slate-900 mb-4 border-b border-slate-100 pb-4 flex items-center gap-2">
+                                <span className="bg-indigo-100 text-indigo-700 p-1 rounded">🎫</span> Apply Coupon
+                            </h2>
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="Enter Code (e.g. FIRST10)"
+                                    value={promoCode}
+                                    onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 font-bold placeholder:text-slate-400 placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 uppercase tracking-widest"
+                                    disabled={appliedPromo !== null || isVerifyingPromo}
+                                />
+                                {appliedPromo ? (
+                                    <Button onClick={() => { setAppliedPromo(null); setPromoCode(""); }} className="bg-rose-100 hover:bg-rose-200 text-rose-700 h-auto rounded-xl px-6 font-bold shadow-none">
+                                        Remove
+                                    </Button>
+                                ) : (
+                                    <Button onClick={handleApplyPromo} disabled={!promoCode || isVerifyingPromo} className="bg-indigo-600 hover:bg-indigo-700 text-white h-auto rounded-xl px-6 font-bold">
+                                        {isVerifyingPromo ? "..." : "Apply"}
+                                    </Button>
+                                )}
+                            </div>
+                            {appliedPromo && (
+                                <div className="mt-3 text-sm font-bold text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg flex items-center justify-between">
+                                    <span>Code {appliedPromo.code} applied!</span>
+                                    <span>-{appliedPromo.discount}%</span>
+                                </div>
+                            )}
+                        </div>
+
                         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-lg relative overflow-hidden">
                             {/* Top Accent */}
                             <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
@@ -222,6 +288,12 @@ function CheckoutContent() {
                                     <div className="flex justify-between items-center">
                                         <span className="text-slate-500">Add-On Services ({selectedAddons.length})</span>
                                         <span className="text-indigo-600 font-bold">+ ₹{addonsTotal.toFixed(2)}</span>
+                                    </div>
+                                )}
+                                {appliedPromo && (
+                                    <div className="flex justify-between items-center text-emerald-600">
+                                        <span className="font-semibold">Discount ({appliedPromo.discount}%)</span>
+                                        <span className="font-bold">- ₹{discountAmount.toFixed(2)}</span>
                                     </div>
                                 )}
                                 <div className="flex justify-between items-center">
