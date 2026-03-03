@@ -55,6 +55,9 @@ class User(Base):
     fitcoins = Column(Integer, default=0)
     referral_code = Column(String, unique=True, index=True, nullable=True)
     
+    # Phase 20: Universal Pass Flexi-Credits
+    flexi_credits = Column(Integer, default=0)
+    
     gyms = relationship("Gym", back_populates="owner")
     bookings = relationship("Booking", back_populates="user")
     reviews = relationship("Review", back_populates="user")
@@ -115,6 +118,12 @@ class Booking(Base):
     promo_code = Column(String, nullable=True)
     final_amount = Column(Float, nullable=True) # Cash amount after discounts and GST
     
+    # Phase 20: Retention & Flexibility
+    guest_name = Column(String, nullable=True)
+    guest_phone = Column(String, nullable=True)
+    reschedule_count = Column(Integer, default=0)
+    is_cancelled = Column(Boolean, default=False)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     user = relationship("User", back_populates="bookings")
@@ -138,9 +147,64 @@ class Review(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     gym_id = Column(Integer, ForeignKey("gyms.id"))
+    booking_id = Column(Integer, ForeignKey("bookings.id"), nullable=True)
     rating = Column(Integer, nullable=False)
     comment = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     user = relationship("User", back_populates="reviews")
     gym = relationship("Gym", back_populates="reviews")
+    booking = relationship("Booking")
+
+# ---------------------------------------------------------------------------
+# PHASE 21: GODEYE SUPER ADMIN DASHBOARD MODELS
+# ---------------------------------------------------------------------------
+
+class TicketStatus(enum.Enum):
+    Open = "Open"
+    InProgress = "InProgress"
+    Resolved = "Resolved"
+    Closed = "Closed"
+
+class SupportTicket(Base):
+    """Tracks customer disputes (e.g., gym denied entry) for admin resolution."""
+    __tablename__ = "support_tickets"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    booking_id = Column(Integer, ForeignKey("bookings.id"), nullable=True) # Optional link to specific pass
+    subject = Column(String, nullable=False)
+    description = Column(Text, nullable=False)
+    status = Column(Enum(TicketStatus), default=TicketStatus.Open, nullable=False)
+    admin_notes = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    user = relationship("User")
+    booking = relationship("Booking")
+
+class CommunicationLog(Base):
+    """Records delivery success of omnichannel messages (WhatsApp/Email) per booking."""
+    __tablename__ = "communication_logs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    booking_id = Column(Integer, ForeignKey("bookings.id"), nullable=True)
+    channel = Column(String, nullable=False) # e.g., "WhatsApp", "Email", "SMS"
+    message_type = Column(String, nullable=False) # e.g., "Welcome", "Booking Confirmation", "Review Request"
+    status = Column(String, nullable=False) # e.g., "Delivered", "Failed", "Pending"
+    error_message = Column(Text, nullable=True)
+    sent_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    user = relationship("User")
+    booking = relationship("Booking")
+
+class PlatformConfig(Base):
+    """Global platform settings managed by Super Admin (e.g., Surge Pricing Multipliers)"""
+    __tablename__ = "platform_configs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String, unique=True, index=True, nullable=False) # e.g., "GLOBAL_SURGE_MULTIPLIER"
+    value = Column(String, nullable=False) # Stored as string, casted dynamically
+    description = Column(String, nullable=True)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

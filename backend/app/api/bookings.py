@@ -9,7 +9,7 @@ from app.api import deps
 
 router = APIRouter()
 
-# Schema for creating a booking (Since we didn't add it to schemas.py yet)
+# Schema for creating a booking
 class BookingCreate(BaseModel):
     gym_id: int
     membership_id: int
@@ -17,6 +17,11 @@ class BookingCreate(BaseModel):
     end_date: datetime
     promo_code: Optional[str] = None
     final_amount: Optional[float] = None
+    
+    # Phase 20: Guest Bookings and Flexi-Credit Payment
+    guest_name: Optional[str] = None
+    guest_phone: Optional[str] = None
+    use_flexi_credits: Optional[bool] = False
 
 @router.post("/")
 def create_booking(
@@ -40,16 +45,28 @@ def create_booking(
         
     import random
     
+    payment_status = models.PaymentStatus.Completed
+    
+    # Phase 20: Pay With Universal Credits
+    if booking_in.use_flexi_credits:
+        if current_user.flexi_credits < 1:
+            raise HTTPException(status_code=400, detail="Insufficient Flexi-Credits. Please top up your Universal Wallet.")
+        current_user.flexi_credits -= 1
+        db.add(current_user)
+        # We consider a credit consumption as a completed payment immediately
+    
     booking = models.Booking(
         user_id=current_user.id,
         gym_id=gym.id,
         membership_id=membership.id,
         start_date=booking_in.start_date,
         end_date=booking_in.end_date,
-        payment_status=models.PaymentStatus.Completed, # Instant activation for Pay-At-Gym Cash Model
+        payment_status=payment_status,
         otp=f"{random.randint(1000, 9999)}",
         promo_code=booking_in.promo_code,
-        final_amount=booking_in.final_amount
+        final_amount=booking_in.final_amount if not booking_in.use_flexi_credits else 0.0,
+        guest_name=booking_in.guest_name,
+        guest_phone=booking_in.guest_phone
     )
     db.add(booking)
     db.commit()
@@ -80,10 +97,18 @@ def create_booking(
         mock_pdf_url = f"https://passfit.in/vouchers/{booking.id}.pdf"
         background_tasks.add_task(send_booking_confirmation_whatsapp, current_user.whatsapp_number, gym_name, booking.otp, pass_type, mock_pdf_url)
 
+    # 3. +1 Guest Buddy Invite
+    if booking.guest_name and booking.guest_phone:
+        # Note: True email/WA payload would customize the text specifically for a "Buddy" joining them today
+        if current_user.whatsapp_number:
+            mock_pdf_url = f"https://passfit.in/vouchers/{booking.id}.pdf"
+            background_tasks.add_task(send_booking_confirmation_whatsapp, booking.guest_phone, gym_name, booking.otp, f"Buddy Pass with {user_name}", mock_pdf_url)
+
     return {
         "status": "success", 
         "booking_id": booking.id, 
-        "payment_status": booking.payment_status
+        "payment_status": booking.payment_status,
+        "used_credit": booking_in.use_flexi_credits
     }
 
 class PaymentVerification(BaseModel):
@@ -240,6 +265,87 @@ def process_post_workout_checkins(
     return {
         "status": "success",
         "post_workout_messages_sent": messages_sent
+    }
+
+class RescheduleRequest(BaseModel):
+    new_start_date: datetime
+    new_end_date: datetime
+
+@router.post("/{booking_id}/reschedule")
+def reschedule_booking(
+    booking_id: int,
+    reschedule_in: RescheduleRequest,
+    db: Session = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_active_user)
+) -> Any:
+    """
+    Phase 20: Allow users to reschedule an active booking before its end_date.
+    Users can only reschedule a maximum of 2 times.
+    """
+    booking = db.query(models.Booking).filter(models.Booking.id == booking_id).first()
+    if not booking or booking.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Booking not found or unauthorized")
+        
+    if booking.payment_status != models.PaymentStatus.Completed:
+        raise HTTPException(status_code=400, detail="Cannot reschedule a pending or failed booking")
+        
+    if booking.is_cancelled:
+        raise HTTPException(status_code=400, detail="Cannot reschedule a cancelled booking")
+        
+    now = datetime.now(timezone.utc)
+    # Convert naive Booking datetime to aware for comparison if needed
+    b_end = booking.end_date if booking.end_date.tzinfo else booking.end_date.replace(tzinfo=timezone.utc)
+    if b_end < now:
+        raise HTTPException(status_code=400, detail="Booking has already expired. Cannot reschedule.")
+        
+    if booking.reschedule_count >= 2:
+        raise HTTPException(status_code=400, detail="Maximum reschedule limit (2) reached.")
+        
+    booking.start_date = reschedule_in.new_start_date
+    booking.end_date = reschedule_in.new_end_date
+    booking.reschedule_count += 1
+    db.commit()
+    db.refresh(booking)
+    
+    return {
+        "status": "success",
+        "message": f"Successfully rescheduled. (Rescheduled {booking.reschedule_count}/2 times)",
+        "new_start_date": booking.start_date,
+        "new_end_date": booking.end_date
+    }
+
+@router.post("/{booking_id}/cancel")
+def cancel_booking(
+    booking_id: int,
+    db: Session = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_active_user)
+) -> Any:
+    """
+    Phase 20: Allow users to self-cancel an active booking.
+    Refunds/Credits logic would be handled by a BackgroundTask interacting with PG/Wallet.
+    """
+    booking = db.query(models.Booking).filter(models.Booking.id == booking_id).first()
+    if not booking or booking.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Booking not found or unauthorized")
+        
+    if booking.is_cancelled:
+        raise HTTPException(status_code=400, detail="Booking is already cancelled.")
+        
+    now = datetime.now(timezone.utc)
+    b_start = booking.start_date if booking.start_date.tzinfo else booking.start_date.replace(tzinfo=timezone.utc)
+    
+    # Simple logic: can auto-cancel if it hasn't technically started yet + 1 hr buffer.
+    if now > (b_start + timedelta(hours=1)):
+        raise HTTPException(status_code=400, detail="Too late to self-cancel. Please contact support.")
+        
+    booking.is_cancelled = True
+    db.commit()
+    
+    # In a real app, you would add `current_user.corporate_wallet_balance += booking.final_amount` or trigger Razorpay Refunds here.
+    
+    return {
+        "status": "success",
+        "message": "Booking has been cancelled successfully."
     }
 
 from fastapi.responses import Response
