@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { CheckCircle2, MapPin, PhoneCall, Download, ArrowRight, ShieldCheck, MapIcon, User } from "lucide-react";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 export default function BookingSuccessReveal() {
     const params = useParams();
     const searchParams = useSearchParams();
+    const router = useRouter();
 
     // Fallback info from query string (if API unavailable)
     const urlGymName = searchParams.get("gymName") || "Premium Fitness Center";
@@ -17,12 +18,13 @@ export default function BookingSuccessReveal() {
     const bookingId = params.id as string;
 
     const [revealData, setRevealData] = useState<any>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [loading, setLoading] = useState(true);
+    const [downloading, setDownloading] = useState(false);
 
     useEffect(() => {
         // Mocking the backend /reveal endpoint for demo since actual checkout is mocked
         const fetchRevealData = async () => {
-            setIsLoading(true);
+            setLoading(true);
             try {
                 // In production, this hits: `/api/v1/bookings/${bookingId}/reveal`
                 // const res = await fetch(`https://passfit.in/api/v1/bookings/${bookingId}/reveal`);
@@ -45,13 +47,42 @@ export default function BookingSuccessReveal() {
                 console.error("Reveal API Error:", e);
                 // Fallback handle if unauthorized 
             } finally {
-                setIsLoading(false);
+                setLoading(false);
             }
         };
         fetchRevealData();
     }, [bookingId, urlGymName, urlMembership]);
 
-    if (isLoading) {
+    const handleDownloadPDF = async () => {
+        try {
+            setDownloading(true);
+            const token = localStorage.getItem('token');
+            const res = await fetch(`https://passfit.in/api/v1/bookings/${params.id}/voucher`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!res.ok) throw new Error("Failed to download PDF");
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `PASSFIT-${params.id}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error(error);
+            alert("Could not download the PDF voucher at this time.");
+        } finally {
+            setDownloading(false);
+        }
+    };
+
+    if (loading) {
         return (
             <main className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
                 <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
@@ -164,8 +195,12 @@ export default function BookingSuccessReveal() {
                         </div>
 
                         {/* Download PDF Action */}
-                        <Button className="w-full h-14 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold shadow-lg shadow-slate-900/20 text-md">
-                            <Download className="w-5 h-5 mr-2" /> Download Premium PDF Voucher
+                        <Button
+                            onClick={handleDownloadPDF}
+                            disabled={downloading}
+                            className="w-full h-14 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold shadow-lg shadow-slate-900/20 text-md"
+                        >
+                            {downloading ? 'Generating PDF...' : <><Download className="w-5 h-5 mr-2" /> Download Premium PDF Voucher</>}
                         </Button>
                     </div>
                 </div>
