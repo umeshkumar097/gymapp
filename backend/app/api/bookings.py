@@ -1,7 +1,8 @@
-from typing import Any, List
+from typing import Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
+from pydantic import BaseModel
 
 from app import models, schemas
 from app.api import deps
