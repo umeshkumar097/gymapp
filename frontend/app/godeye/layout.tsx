@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, CreditCard, Building2, Megaphone, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, Building2, Megaphone, Settings, LogOut, Radio, HeadphonesIcon } from 'lucide-react';
 import { ReactNode } from 'react';
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
@@ -38,6 +38,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                         <span className="font-semibold">Gyms & Approvals</span>
                     </Link>
 
+                    <Link href="/godeye/live" className={`flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 hover:text-white transition-colors ${pathname === '/godeye/live' ? 'bg-red-500/10 text-red-500' : ''}`}>
+                        <Radio className="w-5 h-5 text-red-500 animate-pulse" />
+                        <span className="font-semibold">Live Operations</span>
+                    </Link>
+
                     <Link href="/godeye/payouts" className={`flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 hover:text-white transition-colors ${pathname === '/godeye/payouts' ? 'bg-emerald-500/10 text-emerald-400' : ''}`}>
                         <CreditCard className="w-5 h-5 text-emerald-400" />
                         <span className="font-semibold">Financials & Payouts</span>
@@ -46,6 +51,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                     <Link href="/godeye/marketing" className={`flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 hover:text-white transition-colors ${pathname === '/godeye/marketing' ? 'bg-pink-500/10 text-pink-400' : ''}`}>
                         <Megaphone className="w-5 h-5 text-pink-400" />
                         <span className="font-semibold">Growth Engine</span>
+                    </Link>
+
+                    <Link href="/godeye/support" className={`flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 hover:text-white transition-colors ${pathname === '/godeye/support' ? 'bg-orange-500/10 text-orange-400' : ''}`}>
+                        <HeadphonesIcon className="w-5 h-5 text-orange-400" />
+                        <span className="font-semibold">Support & Disputes</span>
                     </Link>
 
                     <Link href="/godeye/users" className={`flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 hover:text-white transition-colors ${pathname === '/godeye/users' ? 'bg-blue-500/10 text-blue-400' : ''}`}>

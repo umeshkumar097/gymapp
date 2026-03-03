@@ -8,6 +8,7 @@ from app.api.users import router as users_router
 from app.api.partner import router as partner_router
 from app.api.onboarding import router as onboarding_router
 from app.api.promos import router as promos_router
+from app.api.godeye import router as godeye_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -30,6 +31,7 @@ app.include_router(users_router, prefix=f"{settings.API_V1_STR}/users", tags=["u
 app.include_router(partner_router, prefix=f"{settings.API_V1_STR}/partner", tags=["partner"])
 app.include_router(onboarding_router, prefix=f"{settings.API_V1_STR}/onboarding", tags=["onboarding"])
 app.include_router(promos_router, prefix=f"{settings.API_V1_STR}/promos", tags=["promos"])
+app.include_router(godeye_router, prefix=f"{settings.API_V1_STR}/godeye", tags=["godeye"])
 
 @app.get("/")
 def read_root():
