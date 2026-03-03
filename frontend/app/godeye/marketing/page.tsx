@@ -1,15 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tag, Star, Plus, CheckCircle2, XCircle, X, Megaphone, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-
-// Mock Data
-const initialPromoCodes = [
-    { id: 1, code: "FITTODAY20", discountType: "percentage", discountValue: 20, maxUses: 100, usedCount: 45, validUntil: "2023-12-31", active: true },
-    { id: 2, code: "WEEKEND50", discountType: "fixed", discountValue: 50, maxUses: 500, usedCount: 500, validUntil: "2023-11-15", active: false },
-    { id: 3, code: "WELCOMENEW", discountType: "percentage", discountValue: 10, maxUses: "Unlimited", usedCount: 1240, validUntil: "2024-01-01", active: true },
-];
 
 const initialFeaturedGyms = [
     { id: "G-102", name: "Iron Core Fitness", location: "Koramangala, Bangalore", featuredUntil: "2023-11-30" },
@@ -21,9 +14,33 @@ export default function AdminMarketingPage() {
     const [toastMessage, setToastMessage] = useState("");
 
     // Promo State
-    const [promoCodes, setPromoCodes] = useState(initialPromoCodes);
+    const [promoCodes, setPromoCodes] = useState<any[]>([]);
+    const [isLoadingPromos, setIsLoadingPromos] = useState(true);
     const [showPromoModal, setShowPromoModal] = useState(false);
-    const [newPromo, setNewPromo] = useState({ code: "", type: "percentage", value: "", maxUses: "", date: "" });
+    const [newPromo, setNewPromo] = useState({ code: "", type: "percentage", value: "", maxUses: "" });
+
+    // Fetch Promos on Mount
+    useEffect(() => {
+        fetchPromos();
+    }, []);
+
+    const fetchPromos = async () => {
+        try {
+            const token = localStorage.getItem("token");
+            if (!token) return;
+            const res = await fetch("https://passfit.in/api/v1/promos/admin", {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setPromoCodes(data);
+            }
+        } catch (error) {
+            console.error("Failed to fetch promos", error);
+        } finally {
+            setIsLoadingPromos(false);
+        }
+    };
 
     // Featured Gyms State
     const [featuredGyms, setFeaturedGyms] = useState(initialFeaturedGyms);
@@ -34,26 +51,55 @@ export default function AdminMarketingPage() {
         setTimeout(() => setToastMessage(""), 3000);
     };
 
-    const handleCreatePromo = () => {
+    const handleCreatePromo = async () => {
         if (!newPromo.code || !newPromo.value) return;
-        setPromoCodes([...promoCodes, {
-            id: Date.now(),
-            code: newPromo.code.toUpperCase(),
-            discountType: newPromo.type,
-            discountValue: parseInt(newPromo.value),
-            maxUses: newPromo.maxUses || "Unlimited",
-            usedCount: 0,
-            validUntil: newPromo.date || "No Expiry",
-            active: true
-        }]);
-        setShowPromoModal(false);
-        setNewPromo({ code: "", type: "percentage", value: "", maxUses: "", date: "" });
-        showToast(`Promo code ${newPromo.code.toUpperCase()} activated!`);
+
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch("https://passfit.in/api/v1/promos/admin", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    code: newPromo.code.toUpperCase(),
+                    discount_percentage: parseFloat(newPromo.value),
+                    max_uses: newPromo.maxUses ? parseInt(newPromo.maxUses) : null
+                })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setPromoCodes([data, ...promoCodes]);
+                setShowPromoModal(false);
+                setNewPromo({ code: "", type: "percentage", value: "", maxUses: "" });
+                showToast(`Promo code ${data.code} activated!`);
+            } else {
+                const err = await res.json();
+                alert(err.detail || "Failed to create promo");
+            }
+        } catch (error) {
+            alert("Error creating promo code.");
+        }
     };
 
-    const togglePromoStatus = (id: number) => {
-        setPromoCodes(promoCodes.map(p => p.id === id ? { ...p, active: !p.active } : p));
-        showToast("Promo code status updated");
+    const togglePromoStatus = async (id: number) => {
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch(`https://passfit.in/api/v1/promos/admin/${id}/toggle`, {
+                method: "PATCH",
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+
+            if (res.ok) {
+                const updatedPromo = await res.json();
+                setPromoCodes(promoCodes.map(p => p.id === id ? updatedPromo : p));
+                showToast(`Promo ${updatedPromo.is_active ? 'activated' : 'deactivated'}`);
+            }
+        } catch (error) {
+            alert("Error toggling promo status");
+        }
     };
 
     const handleRemoveFeature = (id: string) => {
@@ -122,12 +168,13 @@ export default function AdminMarketingPage() {
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Valid Until (Optional)</label>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Usage Limit (Optional)</label>
                                 <input
-                                    type="date"
-                                    value={newPromo.date}
-                                    onChange={(e) => setNewPromo({ ...newPromo, date: e.target.value })}
+                                    type="number"
+                                    value={newPromo.maxUses}
+                                    onChange={(e) => setNewPromo({ ...newPromo, maxUses: e.target.value })}
                                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                                    placeholder="Leave blank for infinite"
                                 />
                             </div>
                             <Button onClick={handleCreatePromo} className="w-full font-bold bg-indigo-600 hover:bg-indigo-700 h-12 mt-2 shadow-md shadow-indigo-200">
@@ -207,32 +254,34 @@ export default function AdminMarketingPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {promoCodes.map((promo) => (
+                            {isLoadingPromos ? (
+                                <tr><td colSpan={4} className="p-8 text-center text-slate-500 font-bold">Loading Promo Codes...</td></tr>
+                            ) : promoCodes.map((promo) => (
                                 <tr key={promo.id} className="hover:bg-slate-50/50 transition-colors">
                                     <td className="p-4 md:px-6 py-4">
-                                        <div className="inline-flex items-center px-3 py-1 rounded bg-slate-100 border border-slate-200 font-mono text-sm font-bold text-slate-800 tracking-wider">
+                                        <div className={`inline-flex items-center px-3 py-1 rounded border font-mono text-sm font-bold tracking-wider ${promo.is_active ? 'bg-indigo-50 border-indigo-200 text-indigo-800' : 'bg-slate-100 border-slate-200 text-slate-500 line-through'}`}>
                                             {promo.code}
                                         </div>
                                     </td>
                                     <td className="p-4 md:px-6 py-4">
-                                        <div className="font-bold text-indigo-600 text-lg">
-                                            {promo.discountType === 'percentage' ? `${promo.discountValue}% OFF` : `₹${promo.discountValue} OFF`}
+                                        <div className={`font-bold text-lg ${promo.is_active ? 'text-indigo-600' : 'text-slate-400'}`}>
+                                            {promo.discount_percentage}% OFF
                                         </div>
                                     </td>
                                     <td className="p-4 md:px-6 py-4 hidden sm:table-cell">
-                                        <div className="font-bold text-slate-700 text-sm">{promo.usedCount} <span className="text-slate-400 font-medium">/ {promo.maxUses}</span></div>
+                                        <div className="font-bold text-slate-700 text-sm">{promo.current_uses} <span className="text-slate-400 font-medium">/ {promo.max_uses === null ? 'Unlimited' : promo.max_uses}</span></div>
                                         <div className="w-full bg-slate-100 h-1.5 rounded-full mt-2 overflow-hidden">
-                                            {typeof promo.maxUses === 'number' && (
-                                                <div className="bg-indigo-500 h-full" style={{ width: `${(promo.usedCount / promo.maxUses) * 100}%` }}></div>
+                                            {promo.max_uses !== null && (
+                                                <div className={`h-full ${promo.is_active ? 'bg-indigo-500' : 'bg-slate-300'}`} style={{ width: `${Math.min((promo.current_uses / promo.max_uses) * 100, 100)}%` }}></div>
                                             )}
                                         </div>
                                     </td>
                                     <td className="p-4 md:px-6 py-4 hidden md:table-cell">
-                                        <span className="text-sm font-medium text-slate-600">{promo.validUntil}</span>
+                                        <span className="text-sm font-medium text-slate-600">No Expiry</span>
                                     </td>
                                     <td className="p-4 md:px-6 py-4 text-right">
-                                        <Button onClick={() => togglePromoStatus(promo.id)} variant={promo.active ? "outline" : "default"} size="sm" className={`font-bold ${!promo.active ? 'bg-slate-800 hover:bg-slate-900 text-white' : 'border-slate-200 text-slate-600'}`}>
-                                            {promo.active ? "Deactivate" : "Activate Code"}
+                                        <Button onClick={() => togglePromoStatus(promo.id)} variant={promo.is_active ? "outline" : "default"} size="sm" className={`font-bold ${!promo.is_active ? 'bg-slate-800 hover:bg-slate-900 text-white' : 'border-slate-200 text-slate-600'}`}>
+                                            {promo.is_active ? "Deactivate" : "Activate Code"}
                                         </Button>
                                     </td>
                                 </tr>

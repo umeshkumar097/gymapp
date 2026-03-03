@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { HeadphonesIcon, AlertCircle, CheckCircle2, IndianRupee, MessageSquare, Loader2 } from "lucide-react";
+import { HeadphonesIcon, AlertCircle, CheckCircle2, IndianRupee, MessageSquare, Loader2, Activity } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 type Ticket = {

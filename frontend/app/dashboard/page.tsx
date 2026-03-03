@@ -20,6 +20,12 @@ export default function DashboardPage() {
     const [pauseDays, setPauseDays] = useState("5");
     const [isPausing, setIsPausing] = useState(false);
 
+    // Phase 20: Flexibility Engine State
+    const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
+    const [rescheduleTarget, setRescheduleTarget] = useState<any>(null);
+    const [newDate, setNewDate] = useState("");
+    const [isProcessing, setIsProcessing] = useState(false);
+
     useEffect(() => {
         fetchDashboardData();
     }, []);
@@ -49,8 +55,9 @@ export default function DashboardPage() {
 
     const handleCopyReferral = () => {
         if (dashboardData?.user_profile?.referral_code) {
-            navigator.clipboard.writeText(dashboardData.user_profile.referral_code);
-            setToastMessage("Referral Code Copied!");
+            const referralUrl = `https://passfit.in/login?ref=${dashboardData.user_profile.referral_code}`;
+            navigator.clipboard.writeText(referralUrl);
+            setToastMessage("Referral Link Copied!");
             setTimeout(() => setToastMessage(""), 3000);
         }
     };
@@ -90,6 +97,67 @@ export default function DashboardPage() {
             setPauseModalOpen(false);
             alert(`Membership successfully paused for ${pauseDays} days!`);
         }, 1200);
+    };
+
+    // Phase 20: Flexibility API Calls
+    const handleCancelBooking = async (bookingId: number) => {
+        if (!confirm("Are you sure you want to cancel this booking? This action cannot be undone.")) return;
+        setIsProcessing(true);
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch(`https://passfit.in/api/v1/bookings/${bookingId}/cancel`, {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setToastMessage("Booking Cancelled!");
+                fetchDashboardData();
+            } else {
+                alert(data.detail || "Cannot cancel this booking.");
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const submitReschedule = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newDate || !rescheduleTarget) return;
+        setIsProcessing(true);
+
+        try {
+            // Mock Date construct for demonstration. In prod, use a proper DatePicker component.
+            const startDate = new Date(newDate);
+            const endDate = new Date(startDate.getTime() + (24 * 60 * 60 * 1000)); // Add 24 hours for DayPass logic
+
+            const token = localStorage.getItem("token");
+            const res = await fetch(`https://passfit.in/api/v1/bookings/${rescheduleTarget.id}/reschedule`, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    new_start_date: startDate.toISOString(),
+                    new_end_date: endDate.toISOString()
+                })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setToastMessage("Booking Rescheduled!");
+                fetchDashboardData();
+                setRescheduleModalOpen(false);
+            } else {
+                alert(data.detail || "Cannot reschedule.");
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     if (isLoading || !dashboardData) {
@@ -196,16 +264,45 @@ export default function DashboardPage() {
                                                         <Download className="w-4 h-4 mr-2" /> Download PDF
                                                     </Button>
                                                 </div>
+
+                                                {/* Phase 20 Actions */}
+                                                {!active_pass.is_cancelled && (
+                                                    <div className="mt-6 flex flex-wrap gap-2 justify-center md:justify-start">
+                                                        <button
+                                                            onClick={() => { setRescheduleTarget(active_pass); setRescheduleModalOpen(true); }}
+                                                            disabled={active_pass.reschedule_count >= 2}
+                                                            className="text-xs font-bold text-indigo-300 hover:text-indigo-200 bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        >
+                                                            {active_pass.reschedule_count >= 2 ? "Max Reschedules Reached" : `Reschedule Date (${active_pass.reschedule_count}/2)`}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleCancelBooking(active_pass.id)}
+                                                            className="text-xs font-bold text-rose-400 hover:text-rose-300 bg-rose-500/10 px-3 py-1.5 rounded-lg border border-rose-500/20 transition-colors"
+                                                        >
+                                                            Cancel Pass
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
 
                                             {/* Right side OTP */}
                                             <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 w-full md:w-auto text-center relative overflow-hidden">
                                                 <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
-                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 relative z-10">Entry PIN</p>
-                                                <div className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400 tracking-[0.2em] font-mono mb-1 relative z-10">
-                                                    {active_pass.otp}
-                                                </div>
-                                                <p className="text-xs text-slate-500 relative z-10">Show at gym reception</p>
+
+                                                {active_pass.is_cancelled ? (
+                                                    <div className="flex flex-col items-center justify-center h-full relative z-10 py-4">
+                                                        <X className="w-10 h-10 text-rose-500 mb-2" />
+                                                        <p className="font-extrabold tracking-widest text-rose-400 uppercase">Cancelled</p>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 relative z-10">Entry PIN</p>
+                                                        <div className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400 tracking-[0.2em] font-mono mb-1 relative z-10">
+                                                            {active_pass.otp}
+                                                        </div>
+                                                        <p className="text-xs text-slate-500 relative z-10">Show at gym reception</p>
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -345,20 +442,20 @@ export default function DashboardPage() {
 
                                 <h3 className="font-bold text-slate-900 text-lg mb-4">Help & Support</h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <button className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm text-left hover:border-indigo-300 transition-colors group">
+                                    <a href="https://wa.me/918171627448?text=Hi%20PassFit%20Support!%20I%20need%20some%20help." target="_blank" rel="noopener noreferrer" className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm text-left hover:border-indigo-300 transition-colors group block">
                                         <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                                             <Share2 className="w-5 h-5" />
                                         </div>
                                         <h4 className="font-bold text-slate-900 mb-1">WhatsApp Live Chat</h4>
                                         <p className="text-xs text-slate-500 font-medium">Get instant help regarding access issues or billing.</p>
-                                    </button>
-                                    <button className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm text-left hover:border-indigo-300 transition-colors group">
+                                    </a>
+                                    <a href="mailto:support@passfit.in?subject=Pass Dispute Request" className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm text-left hover:border-indigo-300 transition-colors group block">
                                         <div className="w-10 h-10 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                                             <Calendar className="w-5 h-5" />
                                         </div>
                                         <h4 className="font-bold text-slate-900 mb-1">Pass Dispute</h4>
                                         <p className="text-xs text-slate-500 font-medium">Gym was closed? Request a 100% money-back refund.</p>
-                                    </button>
+                                    </a>
                                 </div>
                             </div>
                         )}
@@ -368,6 +465,40 @@ export default function DashboardPage() {
             </div>
 
             {/* Support Modal logic would go here */}
+
+            {/* Reschedule Modal */}
+            {rescheduleModalOpen && rescheduleTarget && (
+                <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+                            <h3 className="font-bold text-xl text-slate-900">Reschedule Booking</h3>
+                            <button onClick={() => setRescheduleModalOpen(false)} className="text-slate-400 hover:text-rose-500 transition-colors">
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            <p className="text-sm text-slate-500 mb-6">You can reschedule your pass up to 2 times before it expires. Select a new date below.</p>
+
+                            <form onSubmit={submitReschedule} className="space-y-6">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 mb-2 block">New Workout Date</label>
+                                    <input
+                                        type="date"
+                                        required
+                                        value={newDate}
+                                        onChange={(e) => setNewDate(e.target.value)}
+                                        min={new Date().toISOString().split('T')[0]}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                                    />
+                                </div>
+                                <Button disabled={isProcessing} className="w-full h-12 text-lg rounded-xl bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200 font-bold">
+                                    {isProcessing ? "Updating..." : "Confirm New Date"}
+                                </Button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
 
         </main>
     );
