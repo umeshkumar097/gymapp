@@ -9,12 +9,13 @@ from app.api import deps
 router = APIRouter()
 
 # Schema for creating a booking (Since we didn't add it to schemas.py yet)
-from pydantic import BaseModel
 class BookingCreate(BaseModel):
     gym_id: int
     membership_id: int
     start_date: datetime
     end_date: datetime
+    promo_code: Optional[str] = None
+    final_amount: Optional[float] = None
 
 @router.post("/")
 def create_booking(
@@ -45,7 +46,9 @@ def create_booking(
         start_date=booking_in.start_date,
         end_date=booking_in.end_date,
         payment_status=models.PaymentStatus.Completed, # Instant activation for Pay-At-Gym Cash Model
-        otp=f"{random.randint(1000, 9999)}"
+        otp=f"{random.randint(1000, 9999)}",
+        promo_code=booking_in.promo_code,
+        final_amount=booking_in.final_amount
     )
     db.add(booking)
     db.commit()

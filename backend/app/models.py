@@ -106,11 +106,27 @@ class Booking(Base):
     payment_status = Column(Enum(PaymentStatus), default=PaymentStatus.Pending)
     otp = Column(String(4), nullable=True) # 4-digit secure PIN for verification
     reminder_sent = Column(Boolean, default=False) # For tracking Abandoned Carts
+    
+    # Pricing & Discounts (Phase 19)
+    promo_code = Column(String, nullable=True)
+    final_amount = Column(Float, nullable=True) # Cash amount after discounts and GST
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     user = relationship("User", back_populates="bookings")
     gym = relationship("Gym", back_populates="bookings")
     membership = relationship("Membership", back_populates="bookings")
+
+class PromoCode(Base):
+    __tablename__ = "promo_codes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String, unique=True, index=True, nullable=False)
+    discount_percentage = Column(Float, nullable=False) # e.g., 10 for 10%
+    max_uses = Column(Integer, nullable=True) # Null means infinite uses
+    current_uses = Column(Integer, default=0)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class Review(Base):
     __tablename__ = "reviews"
