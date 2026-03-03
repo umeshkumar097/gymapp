@@ -327,7 +327,7 @@ export default async function GymDetailsPage({ params }: { params: Promise<{ slu
 
                                     <div className="pt-6 border-t border-slate-100 mt-8">
                                         <Button type="submit" size="lg" className="w-full h-16 text-lg font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-[0_8px_20px_-4px_rgba(79,70,229,0.3)] hover:shadow-[0_12px_25px_-4px_rgba(79,70,229,0.4)] rounded-2xl transition-all duration-300 hover:-translate-y-1 active:translate-y-0">
-                                            Proceed to Checkout
+                                            Book Now
                                         </Button>
                                         <div className="flex items-center justify-center gap-2 mt-5 text-[11px] text-slate-400 font-semibold uppercase tracking-widest">
                                             <Check className="w-3.5 h-3.5 text-emerald-500" />

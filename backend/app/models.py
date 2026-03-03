@@ -10,6 +10,7 @@ class UserRole(enum.Enum):
     Customer = "Customer"
 
 class OnboardingStatus(enum.Enum):
+    NotStarted = "NotStarted"
     PendingFee = "PendingFee"
     FeePaid = "FeePaid"
     InspectionScheduled = "InspectionScheduled"
