@@ -50,6 +50,10 @@ class User(Base):
     # Corporate B2B2C Specific
     company_name = Column(String, nullable=True) # If true, indicates a Corporate HR account or employee
     corporate_wallet_balance = Column(Float, default=0.0) # Credits for booking gyms
+
+    # Phase 15: Gamification & Loyalty
+    fitcoins = Column(Integer, default=0)
+    referral_code = Column(String, unique=True, index=True, nullable=True)
     
     gyms = relationship("Gym", back_populates="owner")
     bookings = relationship("Booking", back_populates="user")
