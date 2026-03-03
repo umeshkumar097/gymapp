@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Tag, Star, Plus, CheckCircle2, XCircle, X, Megaphone, Trash2 } from "lucide-react";
+import { Tag, Star, Plus, CheckCircle2, XCircle, X, Megaphone, Trash2, Activity, Building, Briefcase, Coins, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 const initialFeaturedGyms = [
@@ -19,10 +19,23 @@ export default function AdminMarketingPage() {
     const [showPromoModal, setShowPromoModal] = useState(false);
     const [newPromo, setNewPromo] = useState({ code: "", type: "percentage", value: "", maxUses: "" });
 
+    // Growth Metrics State
+    const [growthMetrics, setGrowthMetrics] = useState<any>(null);
+    const [b2bAccounts, setB2bAccounts] = useState<any[]>([]);
+    const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
+    const [showFundModal, setShowFundModal] = useState(false);
+    const [fundForm, setFundForm] = useState({ email: "", company: "", credits: "" });
+
     // Fetch Promos on Mount
     useEffect(() => {
         fetchPromos();
     }, []);
+
+    useEffect(() => {
+        if (activeTab === "fitcoins" || activeTab === "b2b") {
+            fetchMetricsData();
+        }
+    }, [activeTab]);
 
     const fetchPromos = async () => {
         try {
@@ -39,6 +52,27 @@ export default function AdminMarketingPage() {
             console.error("Failed to fetch promos", error);
         } finally {
             setIsLoadingPromos(false);
+        }
+    };
+
+    const fetchMetricsData = async () => {
+        setIsLoadingMetrics(true);
+        try {
+            const token = localStorage.getItem("token");
+            if (!token) return;
+
+            const [resMetrics, resB2b] = await Promise.all([
+                fetch("https://passfit.in/api/v1/godeye/growth/metrics", { headers: { "Authorization": `Bearer ${token}` } }),
+                fetch("https://passfit.in/api/v1/godeye/growth/b2b", { headers: { "Authorization": `Bearer ${token}` } })
+            ]);
+
+            if (resMetrics.ok) setGrowthMetrics(await resMetrics.json());
+            if (resB2b.ok) setB2bAccounts(await resB2b.json());
+
+        } catch (error) {
+            console.error("Failed to fetch growth metrics", error);
+        } finally {
+            setIsLoadingMetrics(false);
         }
     };
 
@@ -109,6 +143,38 @@ export default function AdminMarketingPage() {
         }
     };
 
+    const handleFundB2b = async () => {
+        if (!fundForm.email || !fundForm.company || !fundForm.credits) return;
+
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch("https://passfit.in/api/v1/godeye/growth/b2b/fund", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    user_email: fundForm.email.toLowerCase(),
+                    company_name: fundForm.company,
+                    flexi_credits_to_add: parseInt(fundForm.credits)
+                })
+            });
+
+            if (res.ok) {
+                showToast(`Successfully issued ${fundForm.credits} credits to ${fundForm.company}`);
+                setShowFundModal(false);
+                setFundForm({ email: "", company: "", credits: "" });
+                fetchMetricsData();
+            } else {
+                const err = await res.json();
+                alert(err.detail || "Error funding account");
+            }
+        } catch (error) {
+            alert("Network error.");
+        }
+    };
+
     return (
         <div className="p-6 md:p-8 max-w-7xl mx-auto pb-24 relative">
 
@@ -120,6 +186,59 @@ export default function AdminMarketingPage() {
                     <button onClick={() => setToastMessage("")} className="ml-2 text-slate-400 hover:text-white">
                         <X className="w-4 h-4" />
                     </button>
+                </div>
+            )}
+
+            {/* Fund B2B Modal */}
+            {showFundModal && (
+                <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                            <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                                <Building className="w-5 h-5 text-indigo-500" />
+                                Fund Corporate Account
+                            </h3>
+                            <button onClick={() => setShowFundModal(false)} className="text-slate-400 hover:text-slate-600">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">HR/Corporate Admin Email</label>
+                                <input
+                                    type="email"
+                                    value={fundForm.email}
+                                    onChange={(e) => setFundForm({ ...fundForm, email: e.target.value })}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                                    placeholder="admin@startup.com"
+                                />
+                                <p className="text-xs text-slate-500 mt-1 font-medium">User must already have an account.</p>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Company Name</label>
+                                <input
+                                    type="text"
+                                    value={fundForm.company}
+                                    onChange={(e) => setFundForm({ ...fundForm, company: e.target.value })}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                                    placeholder="Acme Corp"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Bulk Flexi-Credits to Issue</label>
+                                <input
+                                    type="number"
+                                    value={fundForm.credits}
+                                    onChange={(e) => setFundForm({ ...fundForm, credits: e.target.value })}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                                    placeholder="e.g. 50"
+                                />
+                            </div>
+                            <Button onClick={handleFundB2b} className="w-full font-bold bg-slate-900 hover:bg-slate-800 h-12 mt-2 shadow-md">
+                                Issue Credits
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -210,32 +329,48 @@ export default function AdminMarketingPage() {
             <div className="mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-black text-slate-900 tracking-tight">Lead Gen & Marketing</h1>
-                    <p className="text-slate-500 font-medium mt-1">Configure global discount codes and manage premium homepage placements.</p>
+                    <p className="text-slate-500 font-medium mt-1">Manage global promos, view system-wide FitCoins, and issue Corporate Flexi-Credits.</p>
                 </div>
                 <div className="flex items-center gap-3">
                     {activeTab === "promos" ? (
                         <Button onClick={() => setShowPromoModal(true)} className="bg-indigo-600 hover:bg-indigo-700 font-bold shadow-sm">
                             <Plus className="w-4 h-4 mr-2" /> New Promo Code
                         </Button>
-                    ) : (
+                    ) : activeTab === "b2b" ? (
+                        <Button onClick={() => setShowFundModal(true)} className="bg-slate-900 hover:bg-slate-800 text-white font-bold shadow-sm">
+                            <Building className="w-4 h-4 mr-2" /> Fund Corporate Acc
+                        </Button>
+                    ) : activeTab === "featured" ? (
                         <Button onClick={() => setShowFeatureModal(true)} className="bg-amber-500 hover:bg-amber-600 text-amber-950 font-bold shadow-sm">
                             <Star className="w-4 h-4 mr-2" /> Feature a Gym
                         </Button>
-                    )}
+                    ) : null}
                 </div>
             </div>
 
             {/* Tabs */}
-            <div className="flex p-1 bg-slate-200/50 rounded-xl w-max mb-6">
+            <div className="flex p-1 bg-slate-200/50 rounded-xl w-max mb-6 overflow-x-auto max-w-full">
                 <button
                     onClick={() => setActiveTab("promos")}
-                    className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'promos' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    className={`whitespace-nowrap flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'promos' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                 >
                     <Tag className="w-4 h-4" /> Discount Codes
                 </button>
                 <button
+                    onClick={() => setActiveTab("fitcoins")}
+                    className={`whitespace-nowrap flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'fitcoins' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                    <Coins className="w-4 h-4" /> FitCoins Ledger
+                </button>
+                <button
+                    onClick={() => setActiveTab("b2b")}
+                    className={`whitespace-nowrap flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'b2b' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                    <Briefcase className="w-4 h-4" /> Corporate / B2B Portal
+                </button>
+                <button
                     onClick={() => setActiveTab("featured")}
-                    className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'featured' ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    className={`whitespace-nowrap flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'featured' ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                 >
                     <Star className="w-4 h-4" /> Featured Placements
                 </button>
@@ -255,7 +390,7 @@ export default function AdminMarketingPage() {
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {isLoadingPromos ? (
-                                <tr><td colSpan={4} className="p-8 text-center text-slate-500 font-bold">Loading Promo Codes...</td></tr>
+                                <tr><td colSpan={5} className="p-8 text-center text-slate-500 font-bold"><Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />Loading Promo Codes...</td></tr>
                             ) : promoCodes.map((promo) => (
                                 <tr key={promo.id} className="hover:bg-slate-50/50 transition-colors">
                                     <td className="p-4 md:px-6 py-4">
@@ -288,6 +423,102 @@ export default function AdminMarketingPage() {
                             ))}
                         </tbody>
                     </table>
+                )}
+
+                {activeTab === "fitcoins" && (
+                    <div className="p-6 md:p-8">
+                        {isLoadingMetrics || !growthMetrics ? (
+                            <div className="py-12 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-emerald-500" /></div>
+                        ) : (
+                            <div className="space-y-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="border border-emerald-200 bg-emerald-50 rounded-2xl p-6 shadow-inner">
+                                        <h3 className="text-sm font-bold text-emerald-700 uppercase tracking-widest mb-2">Total FitCoins (System Liability)</h3>
+                                        <div className="text-4xl font-black text-emerald-900 drop-shadow-sm flex items-center gap-2">
+                                            <Coins className="w-8 h-8 text-amber-500 fill-amber-500" />
+                                            {growthMetrics.liability.total_fitcoins.toLocaleString()}
+                                        </div>
+                                        <p className="text-sm text-emerald-800 font-medium mt-2">These are unspent loyalty points held by the userbase.</p>
+                                    </div>
+                                    <div className="border border-blue-200 bg-blue-50 rounded-2xl p-6 shadow-inner">
+                                        <h3 className="text-sm font-bold text-blue-700 uppercase tracking-widest mb-2">Total Flexi-Credits Issued</h3>
+                                        <div className="text-4xl font-black text-blue-900 drop-shadow-sm flex items-center gap-2">
+                                            <Activity className="w-8 h-8 text-blue-500" />
+                                            {growthMetrics.liability.total_flexi_credits.toLocaleString()}
+                                        </div>
+                                        <p className="text-sm text-blue-800 font-medium mt-2">Circulating Universal Passes waiting to be used at any gym.</p>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 className="text-lg font-bold text-slate-900 border-b border-slate-100 pb-4 mb-4">Top FitCoin Holders</h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {growthMetrics.top_users.map((u: any, i: number) => (
+                                            <div key={u.id} className="flex items-center gap-4 bg-white border border-slate-200 p-4 rounded-xl">
+                                                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-500">#{i + 1}</div>
+                                                <div>
+                                                    <div className="font-bold text-slate-900">{u.name}</div>
+                                                    <div className="text-xs text-slate-500 font-mono mt-0.5">{u.email}</div>
+                                                    <div className="text-sm font-black text-emerald-600 flex items-center gap-1 mt-1">
+                                                        <Coins className="w-3 h-3 text-amber-500 fill-amber-500" /> {u.fitcoins} FC
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {activeTab === "b2b" && (
+                    <div>
+                        {isLoadingMetrics ? (
+                            <div className="py-12 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-blue-500" /></div>
+                        ) : (
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-slate-50 border-b border-slate-200">
+                                        <th className="p-4 md:px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company</th>
+                                        <th className="p-4 md:px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">HR Contact</th>
+                                        <th className="p-4 md:px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Wallet Balance</th>
+                                        <th className="p-4 md:px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Flexi-Credits</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {b2bAccounts.map((account) => (
+                                        <tr key={account.id} className="hover:bg-slate-50/50 transition-colors">
+                                            <td className="p-4 md:px-6 py-4">
+                                                <div className="font-bold text-slate-900 text-lg flex items-center gap-2">
+                                                    {account.company_name}
+                                                </div>
+                                            </td>
+                                            <td className="p-4 md:px-6 py-4">
+                                                <div className="font-bold text-sm text-slate-800">{account.name}</div>
+                                                <div className="text-xs text-slate-500 font-mono mt-0.5">{account.email}</div>
+                                            </td>
+                                            <td className="p-4 md:px-6 py-4">
+                                                <div className="font-bold text-slate-900">₹{account.corporate_wallet_balance}</div>
+                                            </td>
+                                            <td className="p-4 md:px-6 py-4 hidden sm:table-cell">
+                                                <div className="inline-flex items-center px-3 py-1 bg-blue-50 text-blue-700 font-black rounded text-sm">
+                                                    {account.flexi_credits} Credits
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {b2bAccounts.length === 0 && (
+                                        <tr>
+                                            <td colSpan={4} className="p-12 text-center text-slate-500 font-medium">
+                                                No B2B Corporate accounts found. Issue credits using the button above to register one!
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
                 )}
 
                 {activeTab === "featured" && (

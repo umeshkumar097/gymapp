@@ -128,3 +128,64 @@ def resolve_support_ticket(
     db.commit()
     return {"message": action_msg}
 
+@router.get("/growth/metrics")
+def get_growth_metrics(db: Session = Depends(get_db), admin: User = Depends(get_godeye_admin)):
+    """Fetch total platform liability for FitCoins and Flexi-Credits."""
+    total_fitcoins = db.query(func.sum(User.fitcoins)).scalar() or 0
+    total_flexi_credits = db.query(func.sum(User.flexi_credits)).scalar() or 0
+    total_corporate_wallet = db.query(func.sum(User.corporate_wallet_balance)).scalar() or 0.0
+
+    top_fitcoin_users = db.query(User).filter(User.fitcoins > 0).order_by(User.fitcoins.desc()).limit(10).all()
+
+    return {
+        "liability": {
+            "total_fitcoins": int(total_fitcoins),
+            "total_flexi_credits": int(total_flexi_credits),
+            "total_corporate_wallet": float(total_corporate_wallet)
+        },
+        "top_users": [
+            {
+                "id": u.id,
+                "name": u.name if hasattr(u, "name") else u.email,
+                "email": u.email,
+                "fitcoins": u.fitcoins
+            } for u in top_fitcoin_users
+        ]
+    }
+
+@router.get("/growth/b2b")
+def get_b2b_accounts(db: Session = Depends(get_db), admin: User = Depends(get_godeye_admin)):
+    """Fetch all users who are marked as Corporate HR/B2B (have a company_name)."""
+    b2b_users = db.query(User).filter(User.company_name.isnot(None), User.company_name != "").all()
+    return [
+        {
+            "id": u.id,
+            "name": u.name if hasattr(u, "name") else u.email,
+            "email": u.email,
+            "company_name": u.company_name,
+            "corporate_wallet_balance": u.corporate_wallet_balance,
+            "flexi_credits": u.flexi_credits
+        } for u in b2b_users
+    ]
+
+class FundB2BRequest(BaseModel):
+    user_email: str
+    company_name: str
+    flexi_credits_to_add: int
+
+@router.post("/growth/b2b/fund")
+def fund_b2b_account(req: FundB2BRequest, db: Session = Depends(get_db), admin: User = Depends(get_godeye_admin)):
+    """Convert a user into a B2B partner and fund them with bulk Flexi-Credits."""
+    user = db.query(User).filter(User.email == req.user_email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found with this email.")
+    
+    user.company_name = req.company_name
+    user.flexi_credits += req.flexi_credits_to_add
+    db.commit()
+    
+    return {
+        "message": f"Successfully funded {req.company_name} account ({user.email}) with {req.flexi_credits_to_add} Flexi-Credits."
+    }
+
+
