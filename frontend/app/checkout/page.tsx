@@ -23,13 +23,37 @@ function CheckoutContent() {
     const [appliedPromo, setAppliedPromo] = useState<{ code: string, discount: number } | null>(null);
     const [isVerifyingPromo, setIsVerifyingPromo] = useState(false);
 
+    // Phase 20: Guest Passes & Flexi-Credits
+    const [guestName, setGuestName] = useState("");
+    const [guestPhone, setGuestPhone] = useState("");
+    const [useFlexiCredit, setUseFlexiCredit] = useState(false);
+    const [userBalance, setUserBalance] = useState({ fitcoins: 0, flexi_credits: 0 });
+
     // Auth and Hydration Check
     useEffect(() => {
+        const fetchUserData = async (token: string) => {
+            try {
+                const res = await fetch("https://passfit.in/api/v1/users/me/dashboard", {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setUserBalance({
+                        fitcoins: data.user_profile.fitcoins,
+                        flexi_credits: data.user_profile.flexi_credits
+                    });
+                }
+            } catch (e) {
+                console.error("Failed fetching user data");
+            }
+        };
+
         const token = localStorage.getItem("token");
         if (!token) {
             window.location.href = "/login";
         } else {
             setIsCheckingAuth(false);
+            fetchUserData(token);
         }
     }, []);
 
@@ -114,7 +138,10 @@ function CheckoutContent() {
                     start_date: startDate.toISOString(),
                     end_date: endDate.toISOString(),
                     promo_code: appliedPromo ? appliedPromo.code : null,
-                    final_amount: parseFloat(total.toFixed(2))
+                    final_amount: parseFloat(total.toFixed(2)),
+                    use_flexi_credits: useFlexiCredit,
+                    guest_name: guestName || null,
+                    guest_phone: guestPhone || null
                 })
             });
 
@@ -154,7 +181,8 @@ function CheckoutContent() {
 
     // Tax is applied ON the post-discount amount
     const taxes = +(postDiscountSubtotal * 0.18).toFixed(2);
-    const total = postDiscountSubtotal + taxes;
+    // If Flexi-credit is used, total cash payment drops to 0 artificially in the preview
+    const total = useFlexiCredit ? 0 : postDiscountSubtotal + taxes;
 
     // Removed inline isSuccess block in favor of dedicated redirect route
 
@@ -228,14 +256,70 @@ function CheckoutContent() {
                             </div>
                         </div>
 
-                        <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl flex items-start gap-3">
+                        {/* Phase 20: universal Pass Toggle */}
+                        {userBalance.flexi_credits > 0 ? (
+                            <div className="bg-indigo-50 border border-indigo-200 p-6 rounded-2xl shadow-sm mt-6 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
+                                <h2 className="text-lg font-bold text-slate-900 mb-2 relative z-10 flex items-center justify-between">
+                                    Use Universal Credit
+                                    <span className="bg-indigo-600 text-white text-xs px-2 py-1 rounded font-black">Balance: {userBalance.flexi_credits}</span>
+                                </h2>
+                                <p className="text-sm text-slate-600 font-medium mb-4 relative z-10">Bypass cash payments entirely. Use 1 Universal Flexi-Credit for this booking.</p>
+                                
+                                <button 
+                                    onClick={() => setUseFlexiCredit(!useFlexiCredit)}
+                                    className={`w-full relative z-10 font-bold h-12 rounded-xl border-2 transition-all ${useFlexiCredit ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-100'}`}
+                                >
+                                    {useFlexiCredit ? "Applied! Total is now ₹0" : "Apply 1 Universal Credit"}
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="bg-slate-100 border border-slate-200 p-6 rounded-2xl mt-6 text-center">
+                                <h3 className="font-bold text-slate-800 mb-2">Want to hop gyms easily?</h3>
+                                <p className="text-sm text-slate-500 font-medium mb-4">Buy Universal Flexi-Credits and access our entire network seamlessly.</p>
+                                <Button asChild variant="outline" className="border-indigo-200 text-indigo-700 font-bold bg-white w-full">
+                                    <Link href="/pass">Learn More</Link>
+                                </Button>
+                            </div>
+                        )}
+
+                        {/* Phase 20: Bring a Friend (+1 Guest) */}
+                        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mt-6">
+                            <h2 className="text-lg font-bold text-slate-900 mb-4 border-b border-slate-100 pb-4 flex items-center gap-2">
+                                <span className="bg-indigo-100 text-indigo-700 p-1 rounded"><Plus className="w-5 h-5"/></span> Bring a Buddy
+                            </h2>
+                            <p className="text-sm text-slate-500 mb-4 font-medium">Add a friend to this booking. We'll send them a standalone Entry OTP on WhatsApp.</p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Guest Name <span className="text-slate-400 font-normal">(Optional)</span></label>
+                                    <input
+                                        type="text"
+                                        placeholder="John Doe"
+                                        value={guestName}
+                                        onChange={(e) => setGuestName(e.target.value)}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Guest WhatsApp <span className="text-slate-400 font-normal">(Optional)</span></label>
+                                    <input
+                                        type="tel"
+                                        placeholder="+91 99999 99999"
+                                        value={guestPhone}
+                                        onChange={(e) => setGuestPhone(e.target.value)}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl flex items-start gap-3 mt-6">
                             <ShieldCheck className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" />
                             <div>
                                 <h4 className="font-bold text-emerald-900 text-sm mb-1">PassFit Guarantee</h4>
                                 <p className="text-emerald-700 text-xs">If the gym is closed or denies entry within validity, you get a 100% refund instantly.</p>
                             </div>
                         </div>
-
 
                     </div>
 
@@ -319,7 +403,7 @@ function CheckoutContent() {
                             <Button
                                 onClick={handleBooking}
                                 className="w-full text-lg h-16 font-extrabold bg-slate-900 hover:bg-slate-800 text-white rounded-2xl relative overflow-hidden group shadow-[0_10px_20px_-10px_rgba(0,0,0,0.5)] transition-all duration-300 hover:shadow-[0_15px_25px_-10px_rgba(0,0,0,0.6)] hover:-translate-y-1"
-                                disabled={isProcessing}
+                                disabled={isProcessing || (useFlexiCredit && userBalance.flexi_credits < 1)}
                             >
                                 {isProcessing ? (
                                     <span className="flex items-center gap-3">
@@ -333,7 +417,8 @@ function CheckoutContent() {
                                     <>
                                         <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out"></div>
                                         <span className="relative z-10 flex items-center justify-center gap-2">
-                                            Confirm Booking (Pay at Gym) <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform" />
+                                            {useFlexiCredit ? "Check-in with Flexi-Credit" : "Confirm Booking (Pay at Gym)"}
+                                            <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform" />
                                         </span>
                                     </>
                                 )}
@@ -341,7 +426,9 @@ function CheckoutContent() {
 
                             <div className="mt-8 flex items-center justify-center gap-3 opacity-50 hover:opacity-100 transition-opacity">
                                 <ShieldCheck className="w-4 h-4 text-slate-400" />
-                                <div className="text-[11px] font-bold font-mono tracking-widest text-slate-500 uppercase">Cash collected directly by gym reception</div>
+                                <div className="text-[11px] font-bold font-mono tracking-widest text-slate-500 uppercase">
+                                    {useFlexiCredit ? "Credits deducted instantly from Universal Wallet" : "Cash collected directly by gym reception"}
+                                </div>
                             </div>
                         </div>
                     </div>
