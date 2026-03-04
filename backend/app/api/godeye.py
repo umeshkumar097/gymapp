@@ -4,7 +4,7 @@ from sqlalchemy import func
 from datetime import datetime, timedelta
 from typing import List
 
-from app.db.database import get_db
+from app.database import get_db
 from app.models import User, Booking, Gym, Review, SupportTicket, CommunicationLog
 from app.api.auth import get_current_user
 
