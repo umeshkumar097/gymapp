@@ -58,7 +58,7 @@ def send_otp_whatsapp(to_number: str, otp_code: str):
                         },
                         {
                             "type": "text",
-                            "text": "+91 97711 46864"
+                            "text": "+91 9871881183"
                         }
                     ]
                 },

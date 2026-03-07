@@ -3,10 +3,9 @@ from typing import Any, Union
 from jose import jwt
 from passlib.context import CryptContext
 from fastapi import Request
+from app.core.config import settings
 
 PWD_CONTEXT = CryptContext(schemes=["bcrypt"], deprecated="auto")
-SECRET_KEY = "dummy-secret-key-for-now-replace-in-prod"
-ALGORITHM = "HS256"
 
 def create_access_token(
     subject: Union[str, Any], expires_delta: timedelta = None
@@ -18,7 +17,7 @@ def create_access_token(
             minutes=60 * 24 * 8
         )
     to_encode = {"exp": expire, "sub": str(subject)}
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:

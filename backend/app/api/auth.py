@@ -29,13 +29,16 @@ def request_login_otp(
     db: Session = Depends(deps.get_db)
 ) -> Any:
     number = payload.whatsapp_number
+    scenario = payload.scenario
+
     # Basic validation
     if len(number) < 10:
         raise HTTPException(status_code=400, detail="Invalid WhatsApp number")
     
-    # 1. Check if user exists. If not, auto-create them to reduce friction.
     user = db.query(models.User).filter(models.User.whatsapp_number == number).first()
-    if not user:
+    
+    # 1. Check if user exists. If not, auto-create them IF scenario is login.
+    if not user and scenario == "login":
         # Check by email fallback (mock email for now)
         mock_email = f"{number}@passfit.in"
         user = models.User(
@@ -125,17 +128,35 @@ def create_user(
     *,
     db: Session = Depends(deps.get_db),
     user_in: schemas.UserCreate,
+    otp: str,
     background_tasks: BackgroundTasks
 ) -> Any:
     """
-    Create new user.
+    Create new user with Email/Password and Mandatory WhatsApp Verification.
     """
-    user = db.query(models.User).filter(models.User.email == user_in.email).first()
-    if user:
-        raise HTTPException(
-            status_code=400,
-            detail="The user with this username already exists in the system.",
-        )
+    # 1. Verify WhatsApp OTP first
+    number = user_in.whatsapp_number
+    stored = otp_store.get(number)
+    if not stored:
+        raise HTTPException(status_code=400, detail="Please request a WhatsApp OTP first")
+    if time.time() > stored["expires"]:
+        del otp_store[number]
+        raise HTTPException(status_code=400, detail="OTP expired. Please request a new one.")
+    if stored["otp"] != otp:
+        raise HTTPException(status_code=400, detail="Incorrect OTP")
+        
+    # Valid OTP, cleanup
+    del otp_store[number]
+
+    # 2. Check for existing users
+    user_by_email = db.query(models.User).filter(models.User.email == user_in.email).first()
+    if user_by_email:
+        raise HTTPException(status_code=400, detail="Email already registered")
+        
+    user_by_phone = db.query(models.User).filter(models.User.whatsapp_number == number).first()
+    if user_by_phone:
+        raise HTTPException(status_code=400, detail="Phone number already registered")
+
     user = models.User(
         email=user_in.email,
         hashed_password=security.get_password_hash(user_in.password),

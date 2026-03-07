@@ -63,6 +63,7 @@ class TokenPayload(BaseModel):
 
 class LoginOTPRequest(BaseModel):
     whatsapp_number: str
+    scenario: Optional[str] = "login"
 
 class LoginOTPVerify(BaseModel):
     whatsapp_number: str
