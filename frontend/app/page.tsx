@@ -4,7 +4,7 @@ import { Search, MapPin, SlidersHorizontal, User, ArrowUpRight } from "lucide-re
 import Image from "next/image";
 import { GymCard } from "@/components/ui/GymCard";
 import { HeroSearch } from "@/components/ui/HeroSearch";
-
+import { HomeHeader } from "@/components/ui/HomeHeader";
 // Fetch gyms from backend
 async function getGyms(resolvedSearchParams: { [key: string]: string | undefined }) {
   const query = new URLSearchParams();
@@ -32,26 +32,8 @@ export default async function Home({
 
   return (
     <main className="flex min-h-screen flex-col bg-slate-50">
-      {/* Premium Glassmorphism Navbar */}
-      <nav className="w-full flex items-center justify-between px-6 py-4 bg-white/70 backdrop-blur-xl border-b border-white/20 sticky top-0 z-50 shadow-[0_4px_30px_rgba(0,0,0,0.03)]">
-        <div className="flex items-center gap-2">
-          <Link href="/" className="text-3xl font-black bg-gradient-to-r from-indigo-600 to-violet-500 bg-clip-text text-transparent tracking-tighter hover:opacity-80 transition-opacity">
-            PassFit
-          </Link>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <Link href="/partner" className="text-[13px] font-bold text-slate-500 hover:text-indigo-600 transition-colors hidden sm:block uppercase tracking-wider">
-            List your Gym
-          </Link>
-          <Link href="/login">
-            <Button variant="outline" size="sm" className="rounded-xl shadow-sm border-slate-200/60 hover:bg-slate-50 hover:border-slate-300 font-bold px-4">
-              <User className="w-4 h-4 mr-2 text-indigo-500" />
-              Log In / Register
-            </Button>
-          </Link>
-        </div>
-      </nav>
+      {/* Dynamic Nav Header */}
+      <HomeHeader />
 
       {/* Hero Section */}
       <div className="relative w-full min-h-[580px] md:min-h-[500px] flex items-center justify-center -mt-20 pt-28 pb-16 md:pt-20 md:pb-12">
@@ -122,9 +104,11 @@ export default async function Home({
         </div>
 
         {gyms.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 justify-items-center gap-x-6 gap-y-12 pb-10">
             {gyms.slice(0, 6).map((gym: any) => (
-              <GymCard key={gym.id} gym={gym} />
+              <div key={gym.id} className="w-full max-w-[380px]">
+                <GymCard gym={gym} />
+              </div>
             ))}
           </div>
         ) : (
