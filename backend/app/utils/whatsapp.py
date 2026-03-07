@@ -46,7 +46,7 @@ def send_otp_whatsapp(to_number: str, otp_code: str):
         "template": {
             "name": "otp",
             "language": {
-                "code": "en"
+                "code": "en_US"
             },
             "components": [
                 {
@@ -59,6 +59,17 @@ def send_otp_whatsapp(to_number: str, otp_code: str):
                         {
                             "type": "text",
                             "text": "+91 97711 46864"
+                        }
+                    ]
+                },
+                {
+                    "type": "button",
+                    "sub_type": "url",
+                    "index": "0",
+                    "parameters": [
+                        {
+                            "type": "text",
+                            "text": str(otp_code)
                         }
                     ]
                 }
