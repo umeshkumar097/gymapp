@@ -61,6 +61,13 @@ class Token(BaseModel):
 class TokenPayload(BaseModel):
     sub: Optional[str] = None
 
+class LoginOTPRequest(BaseModel):
+    whatsapp_number: str
+
+class LoginOTPVerify(BaseModel):
+    whatsapp_number: str
+    otp: str
+
 class BookingRevealResponse(BaseModel):
     booking_id: int
     gym_name: str
