@@ -25,7 +25,7 @@ def send_otp_whatsapp(to_number: str, otp_code: str):
     Sends a real WhatsApp message using Meta Cloud API.
     """
     # Meta WhatsApp Cloud API credentials provided by user
-    PHONE_NUMBER_ID = "375803518953145"
+    PHONE_NUMBER_ID = "1082771188242559"
     ACCESS_TOKEN = "EAANPIHaxlO4BQOPfWEQFL0fmivpSB09yb36B84HIt08im5yLv6VsZC2fFFo9xOZBfBl2i7LzSMRDD5UIisK2O5AekJtlhYYMj38xyEkZByipNIP1P7qeIjK2bFA4nrVjaM0G7yvZAIw4ZCptMXc2gdMxaAjiWKEd9z4q758ff9nvpNf3763dJDMpHMiMdXAZDZD"
     URL = f"https://graph.facebook.com/v19.0/{PHONE_NUMBER_ID}/messages"
     
