@@ -14,6 +14,17 @@ export function ScrollAuthModal() {
 
     const [whatsappNumber, setWhatsappNumber] = useState("");
     const [otp, setOtp] = useState("");
+    const [resendTimer, setResendTimer] = useState(30);
+
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (step === "otp" && resendTimer > 0) {
+            interval = setInterval(() => {
+                setResendTimer((prev) => prev - 1);
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [step, resendTimer]);
 
     useEffect(() => {
         const token = localStorage.getItem("token");
@@ -52,6 +63,7 @@ export function ScrollAuthModal() {
             if (res.ok) {
                 setSuccessMessage("OTP Sent to WhatsApp");
                 setStep("otp");
+                setResendTimer(30);
             } else {
                 const err = await res.json();
                 setError(err.detail || "Failed to send OTP");
@@ -188,13 +200,27 @@ export function ScrollAuthModal() {
                             >
                                 {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Verify & Login"}
                             </Button>
-                            <button
-                                type="button"
-                                onClick={() => { setStep("phone"); setError(""); setSuccessMessage(""); setOtp(""); }}
-                                className="w-full text-center text-sm font-bold text-slate-500 hover:text-slate-800 mt-4 transition-colors"
-                            >
-                                Change Phone Number
-                            </button>
+                            <div className="flex flex-col items-center justify-center space-y-3 pt-2">
+                                <button
+                                    type="button"
+                                    disabled={resendTimer > 0 || isLoading}
+                                    onClick={handleRequestOTP}
+                                    className={`text-sm font-bold transition-colors ${resendTimer > 0
+                                            ? "text-slate-400 cursor-not-allowed"
+                                            : "text-indigo-600 hover:text-indigo-800"
+                                        }`}
+                                >
+                                    {resendTimer > 0 ? `Resend OTP in ${resendTimer}s` : "Resend OTP"}
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => { setStep("phone"); setError(""); setSuccessMessage(""); setOtp(""); }}
+                                    className="text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors"
+                                >
+                                    Change Phone Number
+                                </button>
+                            </div>
                         </form>
                     )}
 

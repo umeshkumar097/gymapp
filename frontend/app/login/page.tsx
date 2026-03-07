@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Loader2, MessageCircle, CheckCircle2 } from "lucide-react";
 
@@ -11,7 +11,18 @@ export default function CustomerLoginPage() {
     const [error, setError] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [resendTimer, setResendTimer] = useState(30);
     const router = useRouter();
+
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (step === "otp" && resendTimer > 0) {
+            interval = setInterval(() => {
+                setResendTimer((prev) => prev - 1);
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [step, resendTimer]);
 
     const handleRequestOTP = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -28,6 +39,7 @@ export default function CustomerLoginPage() {
             if (res.ok) {
                 setSuccessMessage("OTP Sent to your WhatsApp!");
                 setStep("otp");
+                setResendTimer(30); // reset timer on fresh request
             } else {
                 const err = await res.json();
                 setError(err.detail || "Failed to send OTP");
@@ -151,13 +163,27 @@ export default function CustomerLoginPage() {
                             >
                                 {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Verify & Login"}
                             </button>
-                            <button
-                                type="button"
-                                onClick={() => { setStep("phone"); setError(""); setSuccessMessage(""); setOtp(""); }}
-                                className="w-full text-center text-sm font-bold text-slate-500 hover:text-slate-800 mt-4 transition-colors"
-                            >
-                                Change Phone Number
-                            </button>
+                            <div className="flex flex-col items-center justify-center space-y-3 pt-2">
+                                <button
+                                    type="button"
+                                    disabled={resendTimer > 0 || isLoading}
+                                    onClick={handleRequestOTP}
+                                    className={`text-sm font-bold transition-colors ${resendTimer > 0
+                                            ? "text-slate-400 cursor-not-allowed"
+                                            : "text-indigo-600 hover:text-indigo-800"
+                                        }`}
+                                >
+                                    {resendTimer > 0 ? `Resend OTP in ${resendTimer}s` : "Resend OTP"}
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => { setStep("phone"); setError(""); setSuccessMessage(""); setOtp(""); }}
+                                    className="text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors"
+                                >
+                                    Change Phone Number
+                                </button>
+                            </div>
                         </form>
                     )}
 
