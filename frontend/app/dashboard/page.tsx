@@ -321,13 +321,22 @@ export default function DashboardPage() {
 
                                 {/* Quick Stats Row */}
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                    <div className="bg-white border border-slate-200 shadow-sm rounded-2xl p-5">
-                                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Total Workouts</p>
-                                        <p className="text-2xl font-black text-slate-900">{history.length + (active_pass ? 1 : 0)}</p>
+                                    <div className="bg-white border border-slate-200 shadow-sm rounded-2xl p-5 relative overflow-hidden">
+                                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 relative z-10">Total Workouts</p>
+                                        <p className="text-2xl font-black text-slate-900 relative z-10">{history.length + (active_pass ? 1 : 0)}</p>
                                     </div>
-                                    <div className="bg-white border border-slate-200 shadow-sm rounded-2xl p-5">
-                                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">FitCoins Earned</p>
-                                        <p className="text-2xl font-black text-emerald-600">{user_profile.fitcoins}</p>
+                                    <div className="bg-white border border-slate-200 shadow-sm rounded-2xl p-5 relative overflow-hidden">
+                                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 relative z-10">FitCoins Earned</p>
+                                        <p className="text-2xl font-black text-emerald-600 relative z-10">{user_profile.fitcoins}</p>
+                                    </div>
+                                    <div className="col-span-2 md:col-span-1 bg-gradient-to-br from-orange-50 to-rose-50 border border-orange-100 shadow-sm rounded-2xl p-5 relative overflow-hidden group">
+                                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                            <span className="text-6xl">🔥</span>
+                                        </div>
+                                        <p className="text-xs text-orange-600/80 font-black uppercase tracking-wider mb-1 relative z-10">Workout Streak</p>
+                                        <p className="text-2xl font-black text-orange-600 relative z-10 flex items-center gap-2">
+                                            {user_profile.workout_streak || 0} <span className="text-sm font-bold text-orange-500/80 uppercase">Days</span>
+                                        </p>
                                     </div>
                                 </div>
                             </div>

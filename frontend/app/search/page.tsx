@@ -3,6 +3,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 import { Search, MapPin, SlidersHorizontal, User, Calendar, Filter } from "lucide-react";
 import { GymCard } from "@/components/ui/GymCard";
+import { SearchClientWrapper } from "@/components/ui/SearchClientWrapper";
 import { MapWrapper } from "@/components/ui/MapWrapper";
 
 // Fetch gyms from backend
@@ -172,11 +173,7 @@ export default async function SearchPage({
                     </div>
 
                     {gyms.length > 0 ? (
-                        <div className="flex flex-col gap-6">
-                            {gyms.map((gym: any) => (
-                                <GymCard key={gym.id} gym={gym} searchLocation={queryLoc} />
-                            ))}
-                        </div>
+                        <SearchClientWrapper gyms={gyms} searchLocation={queryLoc} />
                     ) : (
                         <div className="w-full h-64 flex flex-col items-center justify-center text-center bg-white rounded-2xl shadow-sm border border-slate-100 mt-4">
                             <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
