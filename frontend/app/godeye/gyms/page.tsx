@@ -48,9 +48,18 @@ const pendingGyms = [
 ];
 
 const activeGyms = [
-    { id: 101, name: "Gold's Gym Indiranagar", location: "Bangalore", users: 1245, revenue: "₹4,50,000", status: "Active" },
-    { id: 102, name: "Cult.Fit HSR", location: "Bangalore", users: 3421, revenue: "₹12,20,000", status: "Active" },
-    { id: 103, name: "Anytime Fitness Malad", location: "Mumbai", users: 890, revenue: "₹2,80,000", status: "Active" },
+    {
+        id: 101, name: "Gold's Gym Indiranagar", owner: "Amit Kumar", email: "amit@golds.com", location: "Bangalore", appliedDate: "2023-01-12", users: 1245, revenue: "₹4,50,000", status: "Active",
+        details: { phone: "+91 9898989898", amenities: ["AC", "Cardio", "Strength", "Steam", "Parking"], dayPassPrice: 499, monthlyPrice: 4999, kycDoc: "GSTIN_29ABCDE1234G", photos: ["https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&q=80&w=400"] }
+    },
+    {
+        id: 102, name: "Cult.Fit HSR", owner: "Neha Singh", email: "neha@cultfit.com", location: "Bangalore", appliedDate: "2023-03-22", users: 3421, revenue: "₹12,20,000", status: "Active",
+        details: { phone: "+91 8888888888", amenities: ["Zumba", "Yoga", "Boxing", "AC"], dayPassPrice: 599, monthlyPrice: 5999, kycDoc: "GSTIN_29XYZAB8901L", photos: ["https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&q=80&w=400"] }
+    },
+    {
+        id: 103, name: "Anytime Fitness Malad", owner: "Vikram Sethi", email: "vikram@anytime.com", location: "Mumbai", appliedDate: "2023-05-05", users: 890, revenue: "₹2,80,000", status: "Active",
+        details: { phone: "+91 7777777777", amenities: ["24/7", "Cardio", "Strength", "Parking"], dayPassPrice: 399, monthlyPrice: 3499, kycDoc: "GSTIN_27MNOPI5678Q", photos: ["https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&q=80&w=400"] }
+    },
 ];
 
 export default function AdminGymsPage() {
@@ -200,12 +209,20 @@ export default function AdminGymsPage() {
                         </div>
 
                         <div className="px-6 py-4 border-t border-slate-100 bg-white flex justify-end gap-3 shrink-0">
-                            <Button variant="outline" onClick={() => handleReject(selectedGym.name)} className="font-bold border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 w-32">
-                                Reject
-                            </Button>
-                            <Button onClick={() => handleApprove(selectedGym.name)} className="font-bold bg-emerald-600 hover:bg-emerald-700 text-white w-40">
-                                Approve Gym
-                            </Button>
+                            {selectedGym.status === "Pending" ? (
+                                <>
+                                    <Button variant="outline" onClick={() => handleReject(selectedGym.name)} className="font-bold border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 w-32">
+                                        Reject
+                                    </Button>
+                                    <Button onClick={() => handleApprove(selectedGym.name)} className="font-bold bg-emerald-600 hover:bg-emerald-700 text-white w-40">
+                                        Approve Gym
+                                    </Button>
+                                </>
+                            ) : (
+                                <Button onClick={() => setSelectedGym(null)} className="font-bold bg-slate-900 hover:bg-slate-800 text-white w-32">
+                                    Close Menu
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -324,7 +341,7 @@ export default function AdminGymsPage() {
                                         <span className="text-sm font-black text-indigo-600">{gym.revenue}</span>
                                     </td>
                                     <td className="p-4 md:p-6 text-right flex justify-end gap-2">
-                                        <Button variant="outline" size="sm" className="font-bold border-slate-200 hover:bg-slate-100">
+                                        <Button variant="outline" size="sm" onClick={() => setSelectedGym(gym)} className="font-bold border-slate-200 hover:bg-slate-100">
                                             View
                                         </Button>
                                         <Button variant="outline" size="sm" onClick={() => handleSuspend(gym.name)} className="font-bold border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 bg-white">

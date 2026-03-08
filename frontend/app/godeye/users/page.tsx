@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Users, MessageSquare, ShieldAlert, Trash2, CheckCircle2, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Users, MessageSquare, ShieldAlert, Trash2, CheckCircle2, X, RefreshCw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 // Mock Data
@@ -36,8 +36,31 @@ const reviewQueue = [
 export default function AdminUsersPage() {
     const [activeTab, setActiveTab] = useState("users");
     const [reviews, setReviews] = useState(reviewQueue);
-    const [users, setUsers] = useState(usersList);
+    const [users, setUsers] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [toastMessage, setToastMessage] = useState("");
+
+    const fetchLiveUsers = async () => {
+        setIsLoading(true);
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch("https://passfit.in/api/v1/godeye/users", {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setUsers(data);
+            }
+        } catch (error) {
+            console.error("Error fetching live users map:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchLiveUsers();
+    }, []);
 
     const showToast = (msg: string) => {
         setToastMessage(msg);
@@ -82,6 +105,14 @@ export default function AdminUsersPage() {
                     <h1 className="text-3xl font-black text-slate-900 tracking-tight">Users & Moderation</h1>
                     <p className="text-slate-500 font-medium mt-1">Manage platform accounts and moderate customer reviews for safety.</p>
                 </div>
+                <button
+                    onClick={fetchLiveUsers}
+                    disabled={isLoading}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 shadow-sm transition-colors"
+                >
+                    <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                    {isLoading ? "Syncing Directory..." : "Refresh Live Network"}
+                </button>
             </div>
 
             {/* Tabs */}

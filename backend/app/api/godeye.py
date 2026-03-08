@@ -128,6 +128,24 @@ def resolve_support_ticket(
     db.commit()
     return {"message": action_msg}
 
+@router.get("/users")
+def get_all_platform_users(db: Session = Depends(get_db), admin: User = Depends(get_godeye_admin)):
+    """Fetch all registered users on the platform."""
+    
+    users = db.query(User).order_by(User.created_at.desc()).all()
+    
+    return [
+        {
+            "id": u.id,
+            "name": u.full_name if hasattr(u, "full_name") and u.full_name else u.email.split('@')[0],
+            "email": u.email,
+            "role": u.role.value if hasattr(u.role, "value") else str(u.role),
+            "joinDate": u.created_at.strftime("%Y-%m-%d"),
+            "bookings": len(u.bookings) if hasattr(u, "bookings") else 0,
+            "status": "Active" if u.is_active else "Suspended",
+        } for u in users
+    ]
+
 @router.get("/growth/metrics")
 def get_growth_metrics(db: Session = Depends(get_db), admin: User = Depends(get_godeye_admin)):
     """Fetch total platform liability for FitCoins and Flexi-Credits."""
