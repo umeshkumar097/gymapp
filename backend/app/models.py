@@ -55,8 +55,9 @@ class User(Base):
     fitcoins = Column(Integer, default=0)
     referral_code = Column(String, unique=True, index=True, nullable=True)
     
-    # Phase 20: Universal Pass Flexi-Credits
+    # Phase 20: Universal Pass Flexi-Credits & Streaks
     flexi_credits = Column(Integer, default=0)
+    workout_streak = Column(Integer, default=0)
     
     gyms = relationship("Gym", back_populates="owner")
     bookings = relationship("Booking", back_populates="user")
