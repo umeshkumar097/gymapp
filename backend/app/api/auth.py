@@ -11,13 +11,26 @@ from app.utils.email import send_welcome_email
 
 import random
 import time
+import json
+import os
 from typing import Dict
 
 router = APIRouter()
 
-# In-memory OTP store (Mock MVP)
-# Structure: {"whatsapp_number": {"otp": "1234", "expires": 1612...}}
-otp_store: Dict[str, dict] = {}
+OTP_FILE = "otps.json"
+
+def get_otp_store() -> Dict[str, dict]:
+    try:
+        if not os.path.exists(OTP_FILE): return {}
+        with open(OTP_FILE, "r") as f: return json.load(f)
+    except:
+        return {}
+
+def save_otp_store(store: Dict[str, dict]):
+    try:
+        with open(OTP_FILE, "w") as f: json.dump(store, f)
+    except:
+        pass
 
 def generate_otp() -> str:
     return str(random.randint(1000, 9999))
@@ -57,10 +70,13 @@ def request_login_otp(
         
     # 2. Generate and store OTP (valid for 5 mins)
     code = generate_otp()
-    otp_store[number] = {
+    
+    store = get_otp_store()
+    store[number] = {
         "otp": code,
         "expires": time.time() + 300 
     }
+    save_otp_store(store)
     
     # 3. Send REAL OTP via Meta Cloud WhatsApp API
     from app.utils.whatsapp import send_otp_whatsapp
@@ -76,12 +92,15 @@ def verify_login_otp(
     number = payload.whatsapp_number
     code = payload.otp
     
-    stored = otp_store.get(number)
+    store = get_otp_store()
+    stored = store.get(number)
+    
     if not stored:
         raise HTTPException(status_code=400, detail="OTP not requested or expired")
     
     if time.time() > stored["expires"]:
-        del otp_store[number]
+        del store[number]
+        save_otp_store(store)
         raise HTTPException(status_code=400, detail="OTP expired. Please request a new one.")
         
     if stored["otp"] != code:
@@ -93,7 +112,8 @@ def verify_login_otp(
          raise HTTPException(status_code=400, detail="User mapping failed")
          
     # Cleanup OTP
-    del otp_store[number]
+    del store[number]
+    save_otp_store(store)
     
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     return {
@@ -136,17 +156,22 @@ def create_user(
     """
     # 1. Verify WhatsApp OTP first
     number = user_in.whatsapp_number
-    stored = otp_store.get(number)
+    
+    store = get_otp_store()
+    stored = store.get(number)
+    
     if not stored:
         raise HTTPException(status_code=400, detail="Please request a WhatsApp OTP first")
     if time.time() > stored["expires"]:
-        del otp_store[number]
+        del store[number]
+        save_otp_store(store)
         raise HTTPException(status_code=400, detail="OTP expired. Please request a new one.")
     if stored["otp"] != otp:
         raise HTTPException(status_code=400, detail="Incorrect OTP")
         
     # Valid OTP, cleanup
-    del otp_store[number]
+    del store[number]
+    save_otp_store(store)
 
     # 2. Check for existing users
     user_by_email = db.query(models.User).filter(models.User.email == user_in.email).first()

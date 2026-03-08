@@ -24,6 +24,17 @@ class UserInDBBase(UserBase):
 class User(UserInDBBase):
     pass
 
+class UserProfileUpdate(BaseModel):
+    full_name: Optional[str] = None
+    gender: Optional[str] = None
+    body_weight: Optional[float] = None
+    profile_picture_url: Optional[str] = None
+
+class TicketCreate(BaseModel):
+    subject: str
+    description: str
+    booking_id: Optional[int] = None
+
 # Gym Schemas
 class GymBase(BaseModel):
     name: str

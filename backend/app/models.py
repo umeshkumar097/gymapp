@@ -44,6 +44,12 @@ class User(Base):
     # Omnichannel specific
     whatsapp_number = Column(String, nullable=True) 
     
+    # Profile Completion (Phase 14)
+    full_name = Column(String, nullable=True)
+    gender = Column(String, nullable=True)
+    body_weight = Column(Float, nullable=True)
+    profile_picture_url = Column(String, nullable=True)
+    
     # Gym Owner Specific
     onboarding_status = Column(Enum(OnboardingStatus, native_enum=False), default=None, nullable=True)
     

@@ -83,19 +83,81 @@ def read_user_dashboard(
         import uuid
         current_user.referral_code = f"FIT-{str(uuid.uuid4())[:8].upper()}"
         db.commit()
+    
+    # Calculate Profile Completion %
+    fields_to_check = [current_user.full_name, current_user.email, current_user.whatsapp_number, current_user.gender, current_user.body_weight, current_user.profile_picture_url]
+    filled_fields = sum(1 for field in fields_to_check if field is not None and str(field).strip() != "")
+    completion_percentage = int((filled_fields / len(fields_to_check)) * 100)
             
     return {
         "user_profile": {
-            "name": current_user.email.split('@')[0],
+            "name": current_user.full_name or current_user.email.split('@')[0], # Fallback to email prefix
+            "full_name": current_user.full_name,
             "email": current_user.email,
             "whatsapp_number": current_user.whatsapp_number,
+            "gender": current_user.gender,
+            "body_weight": current_user.body_weight,
+            "profile_picture_url": current_user.profile_picture_url,
+            "completion_percentage": completion_percentage,
             "fitcoins": current_user.fitcoins or 0,
             "flexi_credits": current_user.flexi_credits or 0,
-            "referral_code": current_user.referral_code
+            "referral_code": current_user.referral_code,
+            "workout_streak": current_user.workout_streak or 0
         },
         "active_pass": active_booking,
         "history": history
     }
+
+@router.put("/me/profile")
+def update_user_profile(
+    payload: schemas.UserProfileUpdate,
+    db: Session = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_active_user),
+) -> Any:
+    """
+    Update the current user's profile details
+    """
+    if payload.full_name is not None: current_user.full_name = payload.full_name
+    if payload.gender is not None: current_user.gender = payload.gender
+    if payload.body_weight is not None: current_user.body_weight = payload.body_weight
+    if payload.profile_picture_url is not None: current_user.profile_picture_url = payload.profile_picture_url
+    
+    db.commit()
+    db.refresh(current_user)
+    
+    return {"status": "success", "message": "Profile updated successfully"}
+
+@router.post("/tickets")
+def create_support_ticket(
+    payload: schemas.TicketCreate,
+    db: Session = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_active_user),
+) -> Any:
+    """
+    Create a new support dispute ticket (e.g. Gym Denied Entry)
+    """
+    ticket = models.SupportTicket(
+        user_id=current_user.id,
+        booking_id=payload.booking_id,
+        subject=payload.subject,
+        description=payload.description
+    )
+    db.add(ticket)
+    db.commit()
+    db.refresh(ticket)
+    
+    return {"status": "success", "ticket_id": ticket.id}
+
+@router.get("/tickets")
+def get_support_tickets(
+    db: Session = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_active_user),
+) -> Any:
+    """
+    Get all support dispute tickets created by the user
+    """
+    tickets = db.query(models.SupportTicket).filter(models.SupportTicket.user_id == current_user.id).order_by(models.SupportTicket.created_at.desc()).all()
+    return tickets
 
 @router.post("/buy-flexi-credits")
 def buy_flexi_credits(

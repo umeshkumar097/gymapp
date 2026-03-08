@@ -26,6 +26,23 @@ export default function DashboardPage() {
     const [newDate, setNewDate] = useState("");
     const [isProcessing, setIsProcessing] = useState(false);
 
+    // Profile Edit State
+    const [profileModalOpen, setProfileModalOpen] = useState(false);
+    const [profileFormData, setProfileFormData] = useState({
+        full_name: "",
+        gender: "",
+        body_weight: "",
+        profile_picture_url: ""
+    });
+
+    // Support Ticket State
+    const [ticketModalOpen, setTicketModalOpen] = useState(false);
+    const [ticketFormData, setTicketFormData] = useState({
+        subject: "Pass Dispute",
+        description: "",
+        booking_id: ""
+    });
+
     useEffect(() => {
         fetchDashboardData();
     }, []);
@@ -152,6 +169,69 @@ export default function DashboardPage() {
                 setRescheduleModalOpen(false);
             } else {
                 alert(data.detail || "Cannot reschedule.");
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleUpdateProfile = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsProcessing(true);
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch("https://passfit.in/api/v1/users/me/profile", {
+                method: "PUT",
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    full_name: profileFormData.full_name || null,
+                    gender: profileFormData.gender || null,
+                    body_weight: profileFormData.body_weight ? parseFloat(profileFormData.body_weight) : null,
+                    profile_picture_url: profileFormData.profile_picture_url || null
+                })
+            });
+            if (res.ok) {
+                setToastMessage("Profile Updated!");
+                fetchDashboardData();
+                setProfileModalOpen(false);
+            } else {
+                alert("Failed to update profile.");
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleSubmitTicket = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsProcessing(true);
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch("https://passfit.in/api/v1/users/tickets", {
+                method: "POST",
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    subject: ticketFormData.subject,
+                    description: ticketFormData.description,
+                    booking_id: ticketFormData.booking_id ? parseInt(ticketFormData.booking_id) : null
+                })
+            });
+            if (res.ok) {
+                setToastMessage("Dispute Ticket Submitted!");
+                setTicketModalOpen(false);
+                setTicketFormData({ subject: "Pass Dispute", description: "", booking_id: "" });
+            } else {
+                alert("Failed to submit ticket.");
             }
         } catch (error) {
             console.error(error);
@@ -426,18 +506,51 @@ export default function DashboardPage() {
                             <div className="animate-in fade-in duration-300 max-w-2xl">
                                 <h2 className="text-2xl font-bold text-slate-900 mb-6 border-b border-slate-200 pb-4">Profile Settings</h2>
 
-                                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-8 space-y-6">
-                                    <div className="flex items-center gap-4 mb-2">
-                                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-black text-xl shadow-inner">
-                                            {user_profile.name.substring(0, 2).toUpperCase()}
+                                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-8 mt-6">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <div className="flex items-center gap-4">
+                                            {user_profile.profile_picture_url ? (
+                                                <img src={user_profile.profile_picture_url} alt="Profile" className="w-16 h-16 rounded-full object-cover shadow-inner" />
+                                            ) : (
+                                                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-black text-xl shadow-inner">
+                                                    {user_profile.name.substring(0, 2).toUpperCase()}
+                                                </div>
+                                            )}
+                                            <div>
+                                                <h3 className="font-bold text-xl text-slate-900">{user_profile.name} <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded ml-2 font-bold uppercase tracking-wider relative -top-0.5">Customer</span></h3>
+                                                <p className="text-slate-500 text-sm">{user_profile.email}</p>
+                                                {user_profile.body_weight && (
+                                                    <p className="text-slate-400 text-xs mt-1">Weight: {user_profile.body_weight} kg</p>
+                                                )}
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h3 className="font-bold text-xl text-slate-900">{user_profile.name} <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded ml-2 font-bold uppercase tracking-wider relative -top-0.5">Customer</span></h3>
-                                            <p className="text-slate-500 text-sm">{user_profile.email}</p>
-                                        </div>
+                                        <Button onClick={() => {
+                                            setProfileFormData({
+                                                full_name: user_profile.full_name || "",
+                                                gender: user_profile.gender || "",
+                                                body_weight: user_profile.body_weight ? user_profile.body_weight.toString() : "",
+                                                profile_picture_url: user_profile.profile_picture_url || ""
+                                            });
+                                            setProfileModalOpen(true);
+                                        }} variant="outline" className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-bold shrink-0">
+                                            Edit Profile
+                                        </Button>
                                     </div>
 
-                                    <hr className="border-slate-100" />
+                                    {/* Profile Completion Indicator */}
+                                    {user_profile.completion_percentage < 100 && (
+                                        <div className="mb-6 p-4 bg-amber-50 rounded-xl border border-amber-100 flex items-start gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 font-bold shrink-0">
+                                                {user_profile.completion_percentage}%
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-amber-900">Profile Incomplete</p>
+                                                <p className="text-xs text-amber-700 mt-1">Add your full name, gender, and body weight to get the best out of PassFit recommendations.</p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <hr className="border-slate-100 mb-6" />
 
                                     <div>
                                         <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Communication</label>
@@ -451,20 +564,20 @@ export default function DashboardPage() {
 
                                 <h3 className="font-bold text-slate-900 text-lg mb-4">Help & Support</h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <a href="https://wa.me/918171627448?text=Hi%20PassFit%20Support!%20I%20need%20some%20help." target="_blank" rel="noopener noreferrer" className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm text-left hover:border-indigo-300 transition-colors group block">
+                                    <a href="https://wa.me/919871881183?text=Hi%20PassFit%20Support!%20I%20need%20some%20help." target="_blank" rel="noopener noreferrer" className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm text-left hover:border-indigo-300 transition-colors group block">
                                         <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                                             <Share2 className="w-5 h-5" />
                                         </div>
                                         <h4 className="font-bold text-slate-900 mb-1">WhatsApp Live Chat</h4>
                                         <p className="text-xs text-slate-500 font-medium">Get instant help regarding access issues or billing.</p>
                                     </a>
-                                    <a href="mailto:support@passfit.in?subject=Pass Dispute Request" className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm text-left hover:border-indigo-300 transition-colors group block">
+                                    <button onClick={() => setTicketModalOpen(true)} className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm text-left hover:border-indigo-300 transition-colors group block w-full">
                                         <div className="w-10 h-10 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                                             <Calendar className="w-5 h-5" />
                                         </div>
                                         <h4 className="font-bold text-slate-900 mb-1">Pass Dispute</h4>
                                         <p className="text-xs text-slate-500 font-medium">Gym was closed? Request a 100% money-back refund.</p>
-                                    </a>
+                                    </button>
                                 </div>
                             </div>
                         )}
@@ -473,7 +586,78 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            {/* Support Modal logic would go here */}
+            {/* Profile Edit Modal */}
+            {profileModalOpen && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative">
+                        <button onClick={() => setProfileModalOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><X className="w-6 h-6" /></button>
+                        <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mb-4"><UserIcon className="w-6 h-6" /></div>
+                        <h2 className="text-2xl font-black text-slate-900 mb-2">Edit Profile</h2>
+                        <p className="text-slate-500 mb-6 text-sm">Update your details to increase your profile completion score.</p>
+                        <form onSubmit={handleUpdateProfile} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Full Name</label>
+                                <input type="text" value={profileFormData.full_name} onChange={(e) => setProfileFormData({ ...profileFormData, full_name: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50" placeholder="John Doe" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Gender</label>
+                                    <select value={profileFormData.gender} onChange={(e) => setProfileFormData({ ...profileFormData, gender: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50">
+                                        <option value="">Select</option>
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Body Weight (kg)</label>
+                                    <input type="number" step="0.1" value={profileFormData.body_weight} onChange={(e) => setProfileFormData({ ...profileFormData, body_weight: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50" placeholder="e.g. 70" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Profile Avatar URL</label>
+                                <input type="url" value={profileFormData.profile_picture_url} onChange={(e) => setProfileFormData({ ...profileFormData, profile_picture_url: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50" placeholder="https://example.com/me.jpg" />
+                            </div>
+                            <Button type="submit" disabled={isProcessing} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-md font-bold text-lg h-12 rounded-xl mt-4">
+                                {isProcessing ? 'Saving...' : 'Save Profile'}
+                            </Button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Support Ticket Modal */}
+            {ticketModalOpen && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative">
+                        <button onClick={() => setTicketModalOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><X className="w-6 h-6" /></button>
+                        <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mb-4"><ShieldCheck className="w-6 h-6" /></div>
+                        <h2 className="text-2xl font-black text-rose-900 mb-2">Submit Dispute</h2>
+                        <p className="text-slate-500 mb-6 text-sm">Gym denied entry or facility was closed during active hours? Submit a swift review request.</p>
+                        <form onSubmit={handleSubmitTicket} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Issue Subject</label>
+                                <select value={ticketFormData.subject} onChange={(e) => setTicketFormData({ ...ticketFormData, subject: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50">
+                                    <option value="Pass Dispute">Pass Dispute / Entry Denied</option>
+                                    <option value="Billing Issue">Billing / FitCoins Issue</option>
+                                    <option value="Other">Other Query</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Booking ID (Optional)</label>
+                                <input type="number" value={ticketFormData.booking_id} onChange={(e) => setTicketFormData({ ...ticketFormData, booking_id: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50" placeholder="e.g. 104" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Describe what happened</label>
+                                <textarea required value={ticketFormData.description} onChange={(e) => setTicketFormData({ ...ticketFormData, description: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50 min-h-[100px]" placeholder="Please provide specific details..."></textarea>
+                            </div>
+                            <Button type="submit" disabled={isProcessing} className="w-full bg-rose-600 hover:bg-rose-700 text-white shadow-md font-bold text-lg h-12 rounded-xl mt-4">
+                                {isProcessing ? 'Submitting...' : 'Submit to Support Admin'}
+                            </Button>
+                        </form>
+                    </div>
+                </div>
+            )}
 
             {/* Reschedule Modal */}
             {rescheduleModalOpen && rescheduleTarget && (
