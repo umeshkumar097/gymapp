@@ -59,7 +59,7 @@ def get_live_operations_feed(db: Session = Depends(get_db), admin: User = Depend
         "live_feed": [
             {
                 "id": b.id,
-                "user_name": b.user.name if b.user else "Unknown",
+                "user_name": b.user.full_name if b.user and hasattr(b.user, 'full_name') and b.user.full_name else (b.user.email.split('@')[0] if b.user else "Unknown"),
                 "gym_name": b.gym.name if b.gym else "Unknown",
                 "status": b.status,
                 "is_cancelled": b.is_cancelled,
@@ -77,7 +77,7 @@ def get_all_support_tickets(db: Session = Depends(get_db), admin: User = Depends
         {
             "id": t.id,
             "user_id": t.user_id,
-            "user_name": t.user.name if t.user else "Unknown",
+            "user_name": t.user.full_name if t.user and hasattr(t.user, 'full_name') and t.user.full_name else (t.user.email.split('@')[0] if t.user else "Unknown"),
             "gym_id": t.gym_id,
             "gym_name": t.gym.name if t.gym else None,
             "booking_id": t.booking_id,
@@ -146,7 +146,7 @@ def get_growth_metrics(db: Session = Depends(get_db), admin: User = Depends(get_
         "top_users": [
             {
                 "id": u.id,
-                "name": u.name if hasattr(u, "name") else u.email,
+                "name": u.full_name if hasattr(u, "full_name") and u.full_name else u.email.split('@')[0],
                 "email": u.email,
                 "fitcoins": u.fitcoins
             } for u in top_fitcoin_users
@@ -160,7 +160,7 @@ def get_b2b_accounts(db: Session = Depends(get_db), admin: User = Depends(get_go
     return [
         {
             "id": u.id,
-            "name": u.name if hasattr(u, "name") else u.email,
+            "name": u.full_name if hasattr(u, "full_name") and u.full_name else u.email.split('@')[0],
             "email": u.email,
             "company_name": u.company_name,
             "corporate_wallet_balance": u.corporate_wallet_balance,
