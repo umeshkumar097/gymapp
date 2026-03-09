@@ -281,23 +281,28 @@ export default async function GymDetailsPage({ params }: { params: Promise<{ slu
                                     <div>
                                         <h4 className="text-xs font-extrabold tracking-widest text-slate-400 uppercase mb-3">Select Date</h4>
                                         <div className="flex gap-2 w-full overflow-x-auto no-scrollbar pb-2">
-                                            {/* Ribbon items */}
-                                            <div className="flex-1 min-w-[65px] flex flex-col items-center justify-center py-3 rounded-2xl bg-indigo-600 text-white shadow-md shadow-indigo-200 border border-indigo-600 cursor-pointer transition-transform hover:-translate-y-1">
-                                                <span className="text-[10px] uppercase font-bold tracking-wider opacity-80 mb-0.5">Mon</span>
-                                                <span className="text-[15px] font-black leading-none">2 Mar</span>
-                                            </div>
-                                            <div className="flex-1 min-w-[65px] flex flex-col items-center justify-center py-3 rounded-2xl bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 cursor-pointer transition-transform hover:-translate-y-1">
-                                                <span className="text-[10px] uppercase font-bold tracking-wider opacity-70 mb-0.5">Tue</span>
-                                                <span className="text-[15px] font-black leading-none text-slate-800">3 Mar</span>
-                                            </div>
-                                            <div className="flex-1 min-w-[65px] flex flex-col items-center justify-center py-3 rounded-2xl bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 cursor-pointer transition-transform hover:-translate-y-1">
-                                                <span className="text-[10px] uppercase font-bold tracking-wider opacity-70 mb-0.5">Wed</span>
-                                                <span className="text-[15px] font-black leading-none text-slate-800">4 Mar</span>
-                                            </div>
-                                            <div className="flex-1 min-w-[65px] flex flex-col items-center justify-center py-3 rounded-2xl bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 cursor-pointer transition-transform hover:-translate-y-1">
-                                                <span className="text-[10px] uppercase font-bold tracking-wider opacity-70 mb-0.5">Thu</span>
-                                                <span className="text-[15px] font-black leading-none text-slate-800">5 Mar</span>
-                                            </div>
+                                            {[...Array(4)].map((_, i) => {
+                                                const d = new Date();
+                                                d.setDate(d.getDate() + i);
+                                                const dayName = d.toLocaleDateString("en-US", { weekday: "short" });
+                                                const monthName = d.toLocaleDateString("en-US", { month: "short" });
+                                                const dateNum = d.getDate();
+                                                const formattedDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                                                
+                                                return (
+                                                    <label key={i} className="flex-1 min-w-[65px] cursor-pointer group relative">
+                                                        <input type="radio" name="selectedDate" value={formattedDate} className="peer sr-only" defaultChecked={i === 0} required />
+                                                        <div className="flex flex-col items-center justify-center py-3 rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm transition-all duration-300 peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:shadow-md peer-checked:shadow-indigo-200 peer-checked:border-indigo-600 hover:bg-slate-50 group-hover:-translate-y-1 peer-checked:hover:-translate-y-0">
+                                                            <span className="text-[10px] uppercase font-bold tracking-wider opacity-70 mb-0.5 peer-checked:opacity-80">
+                                                                {i === 0 ? 'Today' : dayName}
+                                                            </span>
+                                                            <span className="text-[15px] font-black leading-none text-slate-800 peer-checked:text-white">
+                                                                {dateNum} {monthName}
+                                                            </span>
+                                                        </div>
+                                                    </label>
+                                                );
+                                            })}
                                         </div>
                                     </div>
 
