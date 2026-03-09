@@ -111,14 +111,15 @@ def send_first_booking_whatsapp(to_number: str, user_name: str, gym_name: str):
     }
     return _send_mock_whatsapp(to_number, "first_booking_celebration", payload)
 
-def send_booking_confirmation_whatsapp(to_number: str, gym_name: str, otp: str, pass_type: str, pdf_url: str = None):
+def send_booking_confirmation_whatsapp(to_number: str, gym_name: str, otp: str, pass_type: str, pdf_url: str = None, gym_image_url: str = None):
     """
     Trigger: Every Booking success
     """
     payload = {
-        "text": f"Your {pass_type} for {gym_name} is confirmed! ✅\n\n🔑 Entry PIN: {otp}\n\nPresent this PIN at the reception desk to begin your workout. Enjoy your session!"
+        "text": f"Your {pass_type} for {gym_name} is confirmed! 🎉\n\n🎟️ *Entry ID: {otp}*\n\nPresent this ID at the reception desk to begin your workout. Enjoy your session! 💪"
     }
-    return _send_mock_whatsapp(to_number, "booking_confirmed", payload, attachment_url=pdf_url)
+    attachment = gym_image_url if gym_image_url else pdf_url
+    return _send_mock_whatsapp(to_number, "booking_confirmed1", payload, attachment_url=attachment)
 
 def send_post_workout_checkin_whatsapp(to_number: str, gym_name: str):
     """
@@ -128,3 +129,21 @@ def send_post_workout_checkin_whatsapp(to_number: str, gym_name: str):
         "text": f"Hey there! 🏋️‍♀️ How was your session at {gym_name} today?\n\nDrop a quick 1-5 star review on the app to help others, and don't forget to book your next workout to keep the momentum going! 🔥"
     }
     return _send_mock_whatsapp(to_number, "post_workout_review", payload)
+
+def send_workout_reminder_whatsapp(to_number: str, user_name: str, gym_name: str):
+    """
+    Trigger: 1 hour before start_date
+    """
+    payload = {
+        "text": f"Hi {user_name}! Just a quick reminder that your workout session at *{gym_name}* starts soon! 🏃‍♂️\n\nDon't forget your gym shoes, water bottle, and to show your Entry ID at the desk. See you there!"
+    }
+    return _send_mock_whatsapp(to_number, "workout_reminder", payload)
+
+def send_booking_expired_whatsapp(to_number: str, user_name: str, gym_name: str):
+    """
+    Trigger: At end_date
+    """
+    payload = {
+        "text": f"Hi {user_name}, your pass for *{gym_name}* has ended! We hope you had an amazing workout! ⚡️\n\nDon't break your streak! Book your next session right away on the PassFit app."
+    }
+    return _send_mock_whatsapp(to_number, "booking_expired", payload)

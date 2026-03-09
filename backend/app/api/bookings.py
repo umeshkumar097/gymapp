@@ -80,6 +80,12 @@ def create_booking(
     pass_type = booking.membership.type.value
     date_str = booking.start_date.strftime("%Y-%m-%d %I:%M %p")
     
+    gym_image_url = None
+    if booking.gym.photos:
+        photos = [p.strip() for p in booking.gym.photos.split(",")]
+        if photos:
+            gym_image_url = photos[0]
+            
     # 1. First Booking Magic
     booking_count = db.query(models.Booking).filter(models.Booking.user_id == current_user.id, models.Booking.payment_status == models.PaymentStatus.Completed).count()
     if booking_count == 1:
@@ -91,11 +97,11 @@ def create_booking(
     from app.utils.pdf_generator import generate_premium_voucher
     pdf_bytes = generate_premium_voucher(str(booking.id), user_name, gym_name, pass_type, date_str, booking.otp)
     
-    background_tasks.add_task(send_booking_confirmation_email, current_user.email, gym_name, booking.otp, pass_type, date_str, pdf_bytes)
+    background_tasks.add_task(send_booking_confirmation_email, current_user.email, gym_name, booking.otp, pass_type, date_str, pdf_bytes, gym_image_url)
     
     if current_user.whatsapp_number:
         mock_pdf_url = f"https://passfit.in/vouchers/{booking.id}.pdf"
-        background_tasks.add_task(send_booking_confirmation_whatsapp, current_user.whatsapp_number, gym_name, booking.otp, pass_type, mock_pdf_url)
+        background_tasks.add_task(send_booking_confirmation_whatsapp, current_user.whatsapp_number, gym_name, booking.otp, pass_type, mock_pdf_url, gym_image_url)
 
     # 3. +1 Guest Buddy Invite
     if booking.guest_name and booking.guest_phone:
@@ -146,6 +152,12 @@ def verify_payment(
         pass_type = booking.membership.type.value
         date_str = booking.start_date.strftime("%Y-%m-%d %I:%M %p")
         
+        gym_image_url = None
+        if booking.gym.photos:
+            photos = [p.strip() for p in booking.gym.photos.split(",")]
+            if photos:
+                gym_image_url = photos[0]
+                
         # 1. First Booking Magic
         booking_count = db.query(models.Booking).filter(models.Booking.user_id == current_user.id, models.Booking.payment_status == models.PaymentStatus.Completed).count()
         if booking_count == 1:
@@ -157,11 +169,11 @@ def verify_payment(
         from app.utils.pdf_generator import generate_premium_voucher
         pdf_bytes = generate_premium_voucher(str(booking.id), user_name, gym_name, pass_type, date_str, booking.otp)
         
-        background_tasks.add_task(send_booking_confirmation_email, current_user.email, gym_name, booking.otp, pass_type, date_str, pdf_bytes)
+        background_tasks.add_task(send_booking_confirmation_email, current_user.email, gym_name, booking.otp, pass_type, date_str, pdf_bytes, gym_image_url)
         
         if current_user.whatsapp_number:
             mock_pdf_url = f"https://passfit.in/vouchers/{booking.id}.pdf"
-            background_tasks.add_task(send_booking_confirmation_whatsapp, current_user.whatsapp_number, gym_name, booking.otp, pass_type, mock_pdf_url)
+            background_tasks.add_task(send_booking_confirmation_whatsapp, current_user.whatsapp_number, gym_name, booking.otp, pass_type, mock_pdf_url, gym_image_url)
 
         return {"status": "success", "booking_id": booking.id, "payment_status": booking.payment_status}
     
@@ -373,10 +385,84 @@ def download_voucher(
     
     from app.utils.pdf_generator import generate_premium_voucher
     pdf_bytes = generate_premium_voucher(str(booking.id), user_name, gym_name, pass_type, date_str, booking.otp)
-    
     return Response(
         content=pdf_bytes, 
         media_type="application/pdf", 
         headers={"Content-Disposition": f"attachment; filename=PASSFIT-{booking.id}.pdf"}
     )
 
+@router.post("/cron/reminders")
+def process_workout_reminders(
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(deps.get_db),
+) -> Any:
+    """
+    CRON JOB Endpoint: Finds bookings starting in the next 1 hour and sends reminder email/whatsapp.
+    """
+    one_hour_from_now = datetime.now(timezone.utc) + timedelta(hours=1)
+    now = datetime.now(timezone.utc)
+    
+    # Mock finding upcoming bookings that haven't received reminders
+    upcoming_bookings = db.query(models.Booking).filter(
+        models.Booking.payment_status == models.PaymentStatus.Completed,
+        models.Booking.start_date > now,
+        models.Booking.start_date <= one_hour_from_now
+    ).limit(10).all()
+    
+    from app.utils.email import send_workout_reminder_email
+    from app.utils.whatsapp import send_workout_reminder_whatsapp
+    
+    reminders_sent = 0
+    for booking in upcoming_bookings:
+        user = db.query(models.User).filter(models.User.id == booking.user_id).first()
+        if user:
+            gym_image_url = None
+            if booking.gym.photos:
+                photos = [p.strip() for p in booking.gym.photos.split(",")]
+                if photos:
+                    gym_image_url = photos[0]
+
+            background_tasks.add_task(send_workout_reminder_email, user.email, user.email.split('@')[0], booking.gym.name, booking.otp, gym_image_url)
+            if user.whatsapp_number:
+                background_tasks.add_task(send_workout_reminder_whatsapp, user.whatsapp_number, user.email.split('@')[0], booking.gym.name)
+            reminders_sent += 1
+            
+    return {
+        "status": "success",
+        "reminders_sent": reminders_sent
+    }
+
+@router.post("/cron/expirations")
+def process_booking_expirations(
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(deps.get_db),
+) -> Any:
+    """
+    CRON JOB Endpoint: Finds bookings that ended in the past 1 hour and sends the expiration/review email/whatsapp.
+    """
+    one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+    now = datetime.now(timezone.utc)
+    
+    # Mock finding recently expired bookings
+    expired_bookings = db.query(models.Booking).filter(
+        models.Booking.payment_status == models.PaymentStatus.Completed,
+        models.Booking.end_date < now,
+        models.Booking.end_date >= one_hour_ago
+    ).limit(10).all()
+    
+    from app.utils.email import send_booking_expired_email
+    from app.utils.whatsapp import send_booking_expired_whatsapp
+    
+    expirations_sent = 0
+    for booking in expired_bookings:
+        user = db.query(models.User).filter(models.User.id == booking.user_id).first()
+        if user:
+            background_tasks.add_task(send_booking_expired_email, user.email, user.email.split('@')[0], booking.gym.name)
+            if user.whatsapp_number:
+                background_tasks.add_task(send_booking_expired_whatsapp, user.whatsapp_number, user.email.split('@')[0], booking.gym.name)
+            expirations_sent += 1
+            
+    return {
+        "status": "success",
+        "expirations_sent": expirations_sent
+    }
