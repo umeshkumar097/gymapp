@@ -13,3 +13,5 @@ pytest>=7.4.2
 email-validator>=2.0.0
 fpdf2
 fpdf2==2.7.9
+razorpay>=1.4.1
+requests
